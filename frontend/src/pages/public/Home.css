@@ -1,0 +1,464 @@
+/* Home page styles */
+
+/* Hero */
+.hero {
+    position: relative;
+    overflow: hidden;
+    min-height: calc(100vh - var(--nav-height));
+    display: flex;
+    flex-direction: column;
+}
+
+.hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+
+.hero-glow {
+    position: absolute;
+    top: -200px;
+    left: -200px;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(255, 106, 0, 0.12) 0%, transparent 70%);
+    animation: glow-pulse 4s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+
+    0%,
+    100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+}
+
+.hero-inner {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 80px;
+    padding-top: 80px;
+    padding-bottom: 60px;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 560px;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 106, 0, 0.12);
+    border: 1px solid rgba(255, 106, 0, 0.3);
+    color: var(--accent);
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.hero-content h1 {
+    line-height: 1.05;
+}
+
+.hero-content p {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    line-height: 1.7;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* Hero visual */
+.hero-visual {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-circle {
+    width: 360px;
+    height: 360px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, rgba(255, 106, 0, 0.15), transparent 70%),
+        var(--surface);
+    border: 1px solid rgba(255, 106, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8rem;
+    box-shadow: 0 0 80px rgba(255, 106, 0, 0.15);
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-12px);
+    }
+}
+
+/* Stats bar */
+.stats-bar {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
+}
+
+.stats-inner {
+    display: flex;
+    gap: 0;
+}
+
+.stat-item {
+    flex: 1;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-right: 1px solid var(--border);
+}
+
+.stat-item:last-child {
+    border-right: none;
+}
+
+.stat-value {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+.stat-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+/* Categories grid */
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.cat-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    transition: var(--transition);
+}
+
+.cat-card:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    background: var(--surface-2);
+    transform: translateX(4px);
+}
+
+.cat-icon {
+    font-size: 1.4rem;
+}
+
+.cat-name {
+    flex: 1;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.cat-arrow {
+    color: var(--muted-dark);
+    transition: var(--transition);
+}
+
+.cat-card:hover .cat-arrow {
+    color: var(--accent);
+}
+
+/* Product cards */
+.product-card {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-img-wrap {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface-2);
+    aspect-ratio: 4/3;
+}
+
+.product-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.product-card:hover .product-img {
+    transform: scale(1.04);
+}
+
+.product-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+}
+
+.product-info {
+    padding: 14px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.product-category {
+    font-size: 0.72rem;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.product-name {
+    font-size: 0.93rem;
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.35;
+}
+
+.product-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 6px;
+}
+
+.product-price {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.product-stock {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.text-danger {
+    color: #e74c3c;
+}
+
+/* Brands */
+.brands-section {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.brands-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+.brand-chip {
+    padding: 8px 20px;
+    background: var(--bg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.brand-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Why grid */
+.why-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.why-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: var(--transition);
+}
+
+.why-card:hover {
+    border-color: var(--border-light);
+}
+
+.why-icon {
+    color: var(--accent);
+}
+
+.why-card h4 {
+    font-size: 1rem;
+}
+
+.why-card p {
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+/* CTA */
+.cta-section {
+    background: linear-gradient(135deg, rgba(255, 106, 0, 0.08) 0%, transparent 50%);
+    border-top: 1px solid rgba(255, 106, 0, 0.15);
+    border-bottom: 1px solid rgba(255, 106, 0, 0.15);
+    padding: 60px 0;
+}
+
+.cta-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 40px;
+    flex-wrap: wrap;
+}
+
+.cta-inner h2 {
+    margin-bottom: 8px;
+}
+
+/* Footer */
+.site-footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 24px 0;
+}
+
+.footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.footer-logo {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1rem;
+}
+
+.footer-links {
+    display: flex;
+    gap: 20px;
+}
+
+.footer-links a {
+    font-size: 0.82rem;
+    color: var(--muted);
+    transition: var(--transition);
+}
+
+.footer-links a:hover {
+    color: var(--accent);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .why-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .hero-inner {
+        flex-direction: column;
+        padding-top: 48px;
+        gap: 40px;
+    }
+
+    .hero-visual {
+        display: none;
+    }
+
+    .stats-inner {
+        flex-wrap: wrap;
+    }
+
+    .stat-item {
+        flex: 0 0 50%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .why-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cta-inner {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .footer-inner {
+        flex-direction: column;
+        text-align: center;
+    }
+}

@@ -1,0 +1,208 @@
+/* Catalogo page */
+.catalogo-header-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 0 0;
+    position: sticky;
+    top: var(--nav-height);
+    z-index: 50;
+}
+
+.catalogo-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.catalogo-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.catalogo-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.catalogo-search {
+    width: 280px;
+}
+
+.btn-accent-border {
+    border-color: var(--accent) !important;
+    color: var(--accent) !important;
+}
+
+.filter-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+/* Filter panel */
+.filter-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 0;
+    border-top: 1px solid var(--border);
+    animation: slideDown 0.2s ease;
+}
+
+.filter-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.filter-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    min-width: 100px;
+    padding-top: 4px;
+}
+
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.filter-chip {
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--muted);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.filter-chip:hover {
+    border-color: var(--border-light);
+    color: var(--text);
+}
+
+.filter-chip.active {
+    background: rgba(255, 106, 0, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Product card in catalog */
+.product-card-catalog {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+}
+
+.pcat-img-wrap {
+    position: relative;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface-2);
+    aspect-ratio: 4/3;
+}
+
+.pcat-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.product-card-catalog:hover .pcat-img {
+    transform: scale(1.04);
+}
+
+.pcat-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+}
+
+.pcat-out-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.pcat-info {
+    padding: 12px 4px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.pcat-cat {
+    font-size: 0.7rem;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.pcat-sku {
+    font-size: 0.72rem;
+    color: var(--muted-dark);
+}
+
+.pcat-name {
+    font-size: 0.9rem;
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    margin-top: 2px;
+}
+
+.pcat-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    gap: 8px;
+}
+
+.pcat-price {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.btn-success {
+    background: rgba(39, 174, 96, 0.15);
+    border: 1px solid rgba(39, 174, 96, 0.4);
+    color: #2ecc71;
+}
+
+/* No results */
+.no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 80px 0;
+    text-align: center;
+}
