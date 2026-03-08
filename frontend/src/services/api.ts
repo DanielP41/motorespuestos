@@ -81,19 +81,5 @@ export async function getVentas(): Promise<any[]> {
 // ── Stats / Dashboard (Stubs for now) ────────────────────────────────────────
 
 export async function getDashboardKPIs(): Promise<any> {
-    // For now, we manually calculate or call a simple sum if implemented
-    // Let's keep it minimal until real stats endpoint is ready
-    const repuestos = await getRepuestos();
-    const ventas = await getVentas();
-
-    return {
-        ventasHoy: ventas.reduce((acc, v) => acc + v.total, 0),
-        ventasHoyCount: ventas.length,
-        stockCritico: repuestos.filter(r => r.stock_actual < 5).length,
-        garantiasPorVencer: 0,
-        clientesActivos: 0,
-        productosActivos: repuestos.length,
-        ventasRecientes: ventas.slice(-5).reverse(),
-        repuestosStockCritico: repuestos.filter(r => r.stock_actual < 5),
-    };
+    return apiFetch('/stats/kpis');
 }
