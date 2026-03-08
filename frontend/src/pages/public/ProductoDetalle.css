@@ -1,0 +1,246 @@
+/* ProductoDetalle page */
+.detalle-page {
+    padding: 32px 0 64px;
+}
+
+.detalle-back {
+    margin-bottom: 20px;
+    color: var(--muted) !important;
+}
+
+.detalle-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: start;
+    margin-bottom: 48px;
+}
+
+/* Image */
+.detalle-img-col {}
+
+.detalle-img-wrap {
+    position: relative;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    aspect-ratio: 1;
+}
+
+.detalle-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.detalle-img-wrap:hover .detalle-img {
+    transform: scale(1.03);
+}
+
+.detalle-original-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 106, 0, 0.15);
+    border: 1px solid rgba(255, 106, 0, 0.4);
+    color: var(--accent);
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    backdrop-filter: blur(8px);
+}
+
+/* Info */
+.detalle-info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.detalle-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.detalle-cat {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.detalle-sku {
+    font-size: 0.75rem;
+    color: var(--muted);
+    background: var(--surface-2);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.detalle-name {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.15;
+}
+
+.detalle-desc {
+    color: var(--text-secondary);
+    line-height: 1.7;
+    font-size: 0.93rem;
+}
+
+.detalle-price-block {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.detalle-price {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--accent);
+}
+
+/* Actions */
+.detalle-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.qty-control {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.qty-btn {
+    width: 36px;
+    height: 44px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.qty-btn:hover:not(:disabled) {
+    background: var(--surface);
+    color: var(--accent);
+}
+
+.qty-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.qty-val {
+    min-width: 36px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.btn-added {
+    background: rgba(39, 174, 96, 0.15) !important;
+    border: 1px solid rgba(39, 174, 96, 0.4) !important;
+    color: #2ecc71 !important;
+    box-shadow: none !important;
+}
+
+/* Features */
+.detalle-features {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    background: var(--surface-2);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.detalle-feat {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.feat-icon {
+    color: var(--accent);
+}
+
+/* Compatibilidad */
+.detalle-compat {
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+}
+
+.detalle-compat h3 {
+    margin-bottom: 20px;
+}
+
+.compat-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.compat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 18px !important;
+    min-width: 160px;
+}
+
+.compat-marca {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.compat-modelo {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.compat-anio {
+    font-size: 0.78rem;
+    color: var(--muted);
+}
+
+@media (max-width: 768px) {
+    .detalle-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .detalle-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
