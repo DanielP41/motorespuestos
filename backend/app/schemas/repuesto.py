@@ -10,7 +10,13 @@ class RepuestoBase(BaseModel):
 class RepuestoCreate(RepuestoBase):
     pass
 
-class Repuesto(RepuestoBase):
+class RepuestoUpdate(BaseModel):
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    precio: Optional[float] = None
+    stock: Optional[int] = None
+
+class RepuestoOut(RepuestoBase):
     id: int
 
     class Config:
