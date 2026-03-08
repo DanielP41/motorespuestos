@@ -1,19 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, SlidersHorizontal, X, ShoppingCart, Check } from 'lucide-react';
-import { mockRepuestos, mockCategorias, mockMarcas } from '../../data/mockData';
+import { Search, SlidersHorizontal, X, ShoppingCart, Check, Loader2 } from 'lucide-react';
+import { getRepuestos } from '../../services/api';
+import { mockCategorias, mockMarcas } from '../../data/mockData';
 import { useCart } from '../../context/CartContext';
 import { Repuesto } from '../../types/types';
 import './Catalogo.css';
-
-function formatPrice(p: number) {
-    return `$${p.toLocaleString('es-CO')}`;
-}
 
 export default function Catalogo() {
     const [params, setParams] = useSearchParams();
     const [filtersOpen, setFiltersOpen] = useState(false);
     const { addItem, isInCart } = useCart();
+
+    const [products, setProducts] = useState<Repuesto[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     const q = params.get('q') ?? '';
     const catSlug = params.get('categoria') ?? '';
@@ -22,21 +23,40 @@ export default function Catalogo() {
 
     const rootCats = useMemo(() => mockCategorias.filter(c => !c.padre_id), []);
 
-    const results = useMemo(() => {
-        return mockRepuestos.filter(r => {
-            if (q && !r.nombre.toLowerCase().includes(q.toLowerCase()) && !r.sku.toLowerCase().includes(q.toLowerCase())) return false;
-            if (catSlug) {
-                const cat = mockCategorias.find(c => c.slug === catSlug);
-                if (cat && r.categoria_id !== cat.id && r.categoria?.padre_id !== cat.id) return false;
+    useEffect(() => {
+        async function loadData() {
+            setLoading(true);
+            try {
+                // Map frontend filter naming to backend expected params
+                // Note: getRepuestos in api.ts handles basic filtering
+                const data = await getRepuestos({
+                    categoria: catSlug,
+                    marca: marcaId || undefined
+                });
+
+                // Further filter on client side for 'q' and 'soloOriginales' if backend doesn't handle them yet
+                let filtered = data;
+                if (q) {
+                    const lowerQ = q.toLowerCase();
+                    filtered = filtered.filter(r =>
+                        r.nombre.toLowerCase().includes(lowerQ) ||
+                        r.sku.toLowerCase().includes(lowerQ)
+                    );
+                }
+                if (soloOriginales) {
+                    filtered = filtered.filter(r => r.es_original);
+                }
+
+                setProducts(filtered);
+            } catch (err) {
+                console.error('Error loading products:', err);
+                setError('No se pudieron cargar los repuestos. Verificá tu conexión.');
+            } finally {
+                setLoading(false);
             }
-            if (marcaId) {
-                const compat = r.compatibilidades?.some(c => c.modelo?.marca_id === marcaId);
-                if (!compat) return false;
-            }
-            if (soloOriginales && !r.es_original) return false;
-            return true;
-        });
-    }, [q, catSlug, marcaId, soloOriginales]);
+        }
+        loadData();
+    }, [catSlug, marcaId, q, soloOriginales]);
 
     function setParam(key: string, val: string) {
         const next = new URLSearchParams(params);
@@ -60,7 +80,7 @@ export default function Catalogo() {
                         <div>
                             <h1 className="catalogo-title">Catálogo de repuestos</h1>
                             <p className="text-muted" style={{ fontSize: '0.88rem' }}>
-                                {results.length} producto{results.length !== 1 ? 's' : ''} encontrado{results.length !== 1 ? 's' : ''}
+                                {loading ? 'Buscando...' : `${products.length} producto${products.length !== 1 ? 's' : ''} encontrado${products.length !== 1 ? 's' : ''}`}
                             </p>
                         </div>
                         <div className="catalogo-controls">
@@ -155,7 +175,18 @@ export default function Catalogo() {
 
             {/* Products grid */}
             <div className="container" style={{ paddingTop: 32, paddingBottom: 64 }}>
-                {results.length === 0 ? (
+                {loading ? (
+                    <div className="loading-state" style={{ textAlign: 'center', padding: '100px 0' }}>
+                        <Loader2 className="spinner" size={48} />
+                        <p className="text-muted mt-3">Cargando catálogo real...</p>
+                    </div>
+                ) : error ? (
+                    <div className="error-state" style={{ textAlign: 'center', padding: '100px 0' }}>
+                        <X size={48} color="var(--danger)" />
+                        <h3>{error}</h3>
+                        <button className="btn btn-secondary mt-3" onClick={() => window.location.reload()}>Reintentar</button>
+                    </div>
+                ) : products.length === 0 ? (
                     <div className="no-results">
                         <span style={{ fontSize: '3rem' }}>🔍</span>
                         <h3>Sin resultados</h3>
@@ -164,7 +195,7 @@ export default function Catalogo() {
                     </div>
                 ) : (
                     <div className="grid-products">
-                        {results.map(rep => (
+                        {products.map(rep => (
                             <ProductCard key={rep.id} rep={rep} addItem={addItem} inCart={isInCart(rep.id)} />
                         ))}
                     </div>
@@ -188,7 +219,7 @@ function ProductCard({ rep, addItem, inCart }: { rep: Repuesto; addItem: (r: Rep
         <Link to={`/catalogo/${rep.id}`} className="product-card-catalog card card-hover">
             <div className="pcat-img-wrap">
                 <img
-                    src={rep.imagenes?.[0]?.url ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400'}
+                    src={rep.imagen_url || 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400'}
                     alt={rep.nombre}
                     className="pcat-img"
                     loading="lazy"
@@ -197,7 +228,7 @@ function ProductCard({ rep, addItem, inCart }: { rep: Repuesto; addItem: (r: Rep
                 {rep.stock_actual === 0 && <div className="pcat-out-overlay">Agotado</div>}
             </div>
             <div className="pcat-info">
-                <span className="pcat-cat">{rep.categoria?.nombre}</span>
+                <span className="pcat-cat">{rep.categoria || 'Repuesto'}</span>
                 <p className="pcat-sku">SKU: {rep.sku}</p>
                 <h4 className="pcat-name">{rep.nombre}</h4>
                 <div className="pcat-footer">

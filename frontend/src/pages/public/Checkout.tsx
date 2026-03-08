@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
+import { crearVenta } from '../../services/api';
 import './Checkout.css';
 
 type MetodoPago = 'efectivo' | 'tarjeta_debito' | 'tarjeta_credito' | 'transferencia';
@@ -20,6 +21,8 @@ export default function Checkout() {
     const [form, setForm] = useState({
         nombre: '', email: '', telefono: '', direccion: '', notas: '',
     });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const [submitted, setSubmitted] = useState(false);
 
     if (items.length === 0 && !submitted) {
@@ -31,11 +34,34 @@ export default function Checkout() {
         );
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Mock: simular creación de pedido → navegar a confirmación
-        clearCart();
-        navigate('/pedido/MRP-2026-0001');
+        setLoading(true);
+        setError('');
+
+        try {
+            // Transform cart items to backend format
+            const ventaData = {
+                metodo_pago: metodo,
+                total: total,
+                cliente_id: null, // Optional for now
+                items: items.map(item => ({
+                    repuesto_id: item.repuesto.id,
+                    cantidad: item.cantidad,
+                    precio_unitario: item.repuesto.precio_venta
+                }))
+            };
+
+            const result = await crearVenta(ventaData);
+            setSubmitted(true);
+            clearCart();
+            navigate(`/pedido/MRP-2026-${result.id.toString().padStart(4, '0')}`);
+        } catch (err: any) {
+            console.error('Checkout error:', err);
+            setError(err.message || 'Error al procesar el pedido. Verificá tu sesión.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const set = (field: string, val: string) =>
@@ -87,6 +113,7 @@ export default function Checkout() {
                                     type="button"
                                     className={`pago-option ${metodo === m.value ? 'active' : ''}`}
                                     onClick={() => setMetodo(m.value)}
+                                    disabled={loading}
                                 >
                                     {metodo === m.value && <CheckCircle size={14} className="pago-check" />}
                                     {m.label}
@@ -100,12 +127,20 @@ export default function Checkout() {
                             <label className="form-label">Notas del pedido (opcional)</label>
                             <textarea className="form-control" rows={3} value={form.notas}
                                 onChange={e => set('notas', e.target.value)}
-                                placeholder="Instrucciones especiales, horarios de entrega..." />
+                                placeholder="Instrucciones especiales, horarios de entrega..."
+                                disabled={loading} />
                         </div>
                     </div>
 
-                    <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }}>
-                        Confirmar pedido
+                    {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
+
+                    <button
+                        type="submit"
+                        className="btn btn-primary btn-lg"
+                        style={{ width: '100%', justifyContent: 'center' }}
+                        disabled={loading}
+                    >
+                        {loading ? <Loader2 className="spinner" size={20} /> : 'Confirmar pedido'}
                     </button>
                 </form>
 

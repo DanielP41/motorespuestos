@@ -1,137 +1,99 @@
 /**
  * API Service Layer
- * Abstracts data access — swap mock implementations for real fetch calls
- * when the FastAPI backend is ready, without touching any component.
+ * Connects the frontend to the FastAPI backend.
  */
 
-import {
-    Repuesto, Categoria, MarcaMoto, ModeloMoto,
-    Cliente, Venta, Garantia, MovimientoInventario
-} from '../types/types';
+const BASE_URL = 'http://localhost:8000';
 
-import {
-    mockRepuestos, mockCategorias, mockMarcas, mockModelos,
-    mockClientes, mockVentas, mockGarantias, mockMovimientos, mockKPIs
-} from '../data/mockData';
+async function apiFetch(endpoint: string, options: RequestInit = {}) {
+    const token = localStorage.getItem('moto_token');
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options.headers,
+    };
 
-// ── Simulate network latency in dev ──────────────────────────────────────────
-const delay = (ms = 300) => new Promise(res => setTimeout(res, ms));
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(error.detail || 'API request failed');
+    }
+
+    return response.json();
+}
 
 // ── Repuestos ────────────────────────────────────────────────────────────────
-export interface RepuestosFilter {
-    q?: string;
-    categoriaSlug?: string;
-    marcaId?: number;
-    soloOriginales?: boolean;
+
+export async function getRepuestos(params: any = {}): Promise<any[]> {
+    const query = new URLSearchParams();
+    if (params.categoria) query.append('categoria', params.categoria);
+    if (params.marca) query.append('marca', params.marca);
+
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    const data = await apiFetch(`/repuestos/${queryString}`);
+
+    // Map backend response to frontend expectations if needed
+    return data.map((r: any) => ({
+        ...r,
+        sku: r.codigo, // Backend calls it 'codigo', frontend expects 'sku'
+        precio_venta: r.precio,
+        stock_actual: r.stock,
+    }));
 }
 
-export async function getRepuestos(filters: RepuestosFilter = {}): Promise<Repuesto[]> {
-    await delay();
-    const { q, categoriaSlug, marcaId, soloOriginales } = filters;
-
-    return mockRepuestos.filter(r => {
-        if (q) {
-            const lower = q.toLowerCase();
-            if (!r.nombre.toLowerCase().includes(lower) && !r.sku.toLowerCase().includes(lower)) return false;
-        }
-        if (categoriaSlug) {
-            const cat = mockCategorias.find(c => c.slug === categoriaSlug);
-            if (cat && r.categoria_id !== cat.id && r.categoria?.padre_id !== cat.id) return false;
-        }
-        if (marcaId) {
-            const compat = r.compatibilidades?.some(c => c.modelo?.marca_id === marcaId);
-            if (!compat) return false;
-        }
-        if (soloOriginales && !r.es_original) return false;
-        return true;
-    });
+export async function getRepuestoById(id: number): Promise<any> {
+    const r = await apiFetch(`/repuestos/${id}`);
+    return {
+        ...r,
+        sku: r.codigo,
+        precio_venta: r.precio,
+        stock_actual: r.stock,
+    };
 }
 
-export async function getRepuestoById(id: number): Promise<Repuesto | null> {
-    await delay(150);
-    return mockRepuestos.find(r => r.id === id) ?? null;
-}
-
-export async function getRepuestosFeatured(limit = 4): Promise<Repuesto[]> {
-    await delay(200);
-    return mockRepuestos.slice(0, limit);
-}
-
-// ── Categorías ───────────────────────────────────────────────────────────────
-export async function getCategorias(): Promise<Categoria[]> {
-    await delay(100);
-    return mockCategorias;
-}
-
-export async function getCategoriasRaiz(): Promise<Categoria[]> {
-    await delay(100);
-    return mockCategorias.filter(c => !c.padre_id);
-}
-
-// ── Marcas ───────────────────────────────────────────────────────────────────
-export async function getMarcas(): Promise<MarcaMoto[]> {
-    await delay(100);
-    return mockMarcas;
-}
-
-export async function getModelos(): Promise<ModeloMoto[]> {
-    await delay(100);
-    return mockModelos;
-}
-
-// ── Clientes ─────────────────────────────────────────────────────────────────
-export interface ClientesFilter { q?: string; }
-
-export async function getClientes(filters: ClientesFilter = {}): Promise<Cliente[]> {
-    await delay();
-    const { q } = filters;
-    if (!q) return mockClientes;
-    const lower = q.toLowerCase();
-    return mockClientes.filter(c =>
-        c.nombre.toLowerCase().includes(lower) || c.documento_nro.includes(q)
-    );
+export async function getRepuestosFeatured(limit = 4): Promise<any[]> {
+    const data = await apiFetch(`/repuestos/?limit=${limit}`);
+    return data.map((r: any) => ({
+        ...r,
+        sku: r.codigo,
+        precio_venta: r.precio,
+        stock_actual: r.stock,
+    }));
 }
 
 // ── Ventas ───────────────────────────────────────────────────────────────────
-export async function getVentas(): Promise<Venta[]> {
-    await delay();
-    return mockVentas;
+
+export async function crearVenta(ventaData: any): Promise<any> {
+    return apiFetch('/ventas/', {
+        method: 'POST',
+        body: JSON.stringify(ventaData),
+    });
 }
 
-// ── Garantías ────────────────────────────────────────────────────────────────
-export async function getGarantias(): Promise<Garantia[]> {
-    await delay();
-    return mockGarantias;
+export async function getVentas(): Promise<any[]> {
+    return apiFetch('/ventas/');
 }
 
-// ── Inventario ───────────────────────────────────────────────────────────────
-export async function getMovimientos(): Promise<MovimientoInventario[]> {
-    await delay();
-    return mockMovimientos;
-}
+// ── Stats / Dashboard (Stubs for now) ────────────────────────────────────────
 
-// ── Dashboard KPIs ───────────────────────────────────────────────────────────
-export interface DashboardKPIs {
-    ventasHoy: number;
-    ventasHoyCount: number;
-    stockCritico: number;
-    garantiasPorVencer: number;
-    clientesActivos: number;
-    productosActivos: number;
-    ventasRecientes: Venta[];
-    repuestosStockCritico: Repuesto[];
-}
-
-export async function getDashboardKPIs(): Promise<DashboardKPIs> {
-    await delay(400);
-    const stockCritico = mockRepuestos.filter(r => r.stock_actual < r.stock_minimo);
-    const ventasHoy = mockVentas.filter(v => v.fecha.startsWith('2026-03-03'));
+export async function getDashboardKPIs(): Promise<any> {
+    // For now, we manually calculate or call a simple sum if implemented
+    // Let's keep it minimal until real stats endpoint is ready
+    const repuestos = await getRepuestos();
+    const ventas = await getVentas();
 
     return {
-        ...mockKPIs,
-        stockCritico: stockCritico.length,
-        ventasHoyCount: ventasHoy.length,
-        ventasRecientes: mockVentas,
-        repuestosStockCritico: stockCritico,
+        ventasHoy: ventas.reduce((acc, v) => acc + v.total, 0),
+        ventasHoyCount: ventas.length,
+        stockCritico: repuestos.filter(r => r.stock_actual < 5).length,
+        garantiasPorVencer: 0,
+        clientesActivos: 0,
+        productosActivos: repuestos.length,
+        ventasRecientes: ventas.slice(-5).reverse(),
+        repuestosStockCritico: repuestos.filter(r => r.stock_actual < 5),
     };
 }

@@ -1,57 +1,100 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+
+interface UserProfile {
+    id: number;
+    username: string;
+    email: string;
+    nombre_completo?: string;
+    role: 'admin' | 'vendedor';
+}
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    user: { name: string; email?: string; role: 'admin' | 'customer' } | null;
-    login: (password: string, email?: string) => Promise<boolean>;
+    user: UserProfile | null;
+    token: string | null;
+    login: (username: string, password: string) => Promise<boolean>;
     logout: () => void;
+    isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock credentials
-const MOCK_ADMIN_PASSWORD = 'admin2026';
-const MOCK_CUSTOMER_EMAIL = 'cliente@ejemplo.com';
-const MOCK_CUSTOMER_PASSWORD = 'cliente123';
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [user, setUser] = useState<AuthContextType['user']>(() => {
-        try {
-            const saved = sessionStorage.getItem('moto_user');
-            return saved ? JSON.parse(saved) : null;
-        } catch { return null; }
-    });
-
-    const login = useCallback(async (password: string, email?: string): Promise<boolean> => {
-        // Simulate API call
-        await new Promise(res => setTimeout(res, 600));
-
-        // Admin log-in
-        if (password === MOCK_ADMIN_PASSWORD && (!email || email === 'admin@3mmotos.com')) {
-            const u = { name: 'Admin', role: 'admin' as const };
-            setUser(u);
-            sessionStorage.setItem('moto_user', JSON.stringify(u));
-            return true;
-        }
-
-        // Customer log-in
-        if (password === MOCK_CUSTOMER_PASSWORD && (!email || email === MOCK_CUSTOMER_EMAIL)) {
-            const u = { name: 'Cliente Valorado', email: MOCK_CUSTOMER_EMAIL, role: 'customer' as const };
-            setUser(u);
-            sessionStorage.setItem('moto_user', JSON.stringify(u));
-            return true;
-        }
-
-        return false;
-    }, []);
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [token, setToken] = useState<string | null>(localStorage.getItem('moto_token'));
+    const [isLoading, setIsLoading] = useState(true);
 
     const logout = useCallback(() => {
+        setToken(null);
         setUser(null);
-        sessionStorage.removeItem('moto_user');
+        localStorage.removeItem('moto_token');
     }, []);
 
+    const fetchUserProfile = useCallback(async (authToken: string) => {
+        try {
+            const resp = await fetch('http://localhost:8000/auth/me', {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (resp.ok) {
+                const userData = await resp.json();
+                setUser(userData);
+                return true;
+            } else {
+                logout();
+                return false;
+            }
+        } catch (error) {
+            console.error('Error fetching user profile:', error);
+            logout();
+            return false;
+        }
+    }, [logout]);
+
+    const login = useCallback(async (username: string, password: string): Promise<boolean> => {
+        try {
+            const formData = new URLSearchParams();
+            formData.append('username', username);
+            formData.append('password', password);
+
+            const resp = await fetch('http://localhost:8000/auth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
+            });
+
+            if (resp.ok) {
+                const data = await resp.json();
+                const newToken = data.access_token;
+                setToken(newToken);
+                localStorage.setItem('moto_token', newToken);
+                return await fetchUserProfile(newToken);
+            }
+            return false;
+        } catch (error) {
+            console.error('Login error:', error);
+            return false;
+        }
+    }, [fetchUserProfile]);
+
+    useEffect(() => {
+        const initAuth = async () => {
+            if (token) {
+                await fetchUserProfile(token);
+            }
+            setIsLoading(false);
+        };
+        initAuth();
+    }, [token, fetchUserProfile]);
+
     return (
-        <AuthContext.Provider value={{ isAuthenticated: !!user, user, login, logout }}>
+        <AuthContext.Provider value={{
+            isAuthenticated: !!user,
+            user,
+            token,
+            login,
+            logout,
+            isLoading
+        }}>
             {children}
         </AuthContext.Provider>
     );

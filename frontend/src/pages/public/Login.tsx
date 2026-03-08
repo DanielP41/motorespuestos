@@ -23,7 +23,7 @@ export default function Login() {
         setError('');
         setLoading(true);
 
-        const ok = await login(password, email);
+        const ok = await login(email, password);
         setLoading(false);
 
         if (ok) {
