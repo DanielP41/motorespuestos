@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
+import { AuthProvider } from './context/AuthContext';
 
 // Layout components
 import Navbar from './components/Navbar';
 import AdminLayout from './components/AdminLayout';
+import RequireAuth from './components/RequireAuth';
 
 // Public pages
 import Home from './pages/public/Home';
@@ -13,6 +15,10 @@ import Carrito from './pages/public/Carrito';
 import Checkout from './pages/public/Checkout';
 import PedidoConfirmado from './pages/public/PedidoConfirmado';
 import Contacto from './pages/public/Contacto';
+import Login from './pages/public/Login';
+import Registro from './pages/public/Registro';
+import Terminos from './pages/public/Terminos';
+import Privacidad from './pages/public/Privacidad';
 
 // Admin pages
 import Dashboard from './pages/admin/Dashboard';
@@ -22,7 +28,9 @@ import Ventas from './pages/admin/Ventas';
 import Clientes from './pages/admin/Clientes';
 import Garantias from './pages/admin/Garantias';
 
-// Public wrapper layout (navbar + outlet)
+// 404
+import NotFound from './pages/NotFound';
+
 function PublicLayout() {
     return (
         <>
@@ -35,30 +43,46 @@ function PublicLayout() {
 export default function App() {
     return (
         <BrowserRouter>
-            <CartProvider>
-                <Routes>
-                    {/* Public routes */}
-                    <Route element={<PublicLayout />}>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/catalogo" element={<Catalogo />} />
-                        <Route path="/catalogo/:id" element={<ProductoDetalle />} />
-                        <Route path="/carrito" element={<Carrito />} />
-                        <Route path="/checkout" element={<Checkout />} />
-                        <Route path="/pedido/:id" element={<PedidoConfirmado />} />
-                        <Route path="/contacto" element={<Contacto />} />
-                    </Route>
+            <AuthProvider>
+                <CartProvider>
+                    <Routes>
+                        {/* Public routes */}
+                        <Route element={<PublicLayout />}>
+                            <Route path="/" element={<Home />} />
+                            <Route path="/catalogo" element={<Catalogo />} />
+                            <Route path="/catalogo/:id" element={<ProductoDetalle />} />
+                            <Route path="/carrito" element={<Carrito />} />
+                            <Route path="/checkout" element={<Checkout />} />
+                            <Route path="/pedido/:id" element={<PedidoConfirmado />} />
+                            <Route path="/contacto" element={<Contacto />} />
+                            <Route path="/terminos" element={<Terminos />} />
+                            <Route path="/privacidad" element={<Privacidad />} />
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/registro" element={<Registro />} />
+                        </Route>
 
-                    {/* Admin routes */}
-                    <Route path="/admin" element={<AdminLayout />}>
-                        <Route index element={<Dashboard />} />
-                        <Route path="repuestos" element={<Repuestos />} />
-                        <Route path="inventario" element={<Inventario />} />
-                        <Route path="ventas" element={<Ventas />} />
-                        <Route path="clientes" element={<Clientes />} />
-                        <Route path="garantias" element={<Garantias />} />
-                    </Route>
-                </Routes>
-            </CartProvider>
+                        {/* Admin routes — protected */}
+                        <Route
+                            path="/admin"
+                            element={
+                                <RequireAuth role="admin">
+                                    <AdminLayout />
+                                </RequireAuth>
+                            }
+                        >
+                            <Route index element={<Dashboard />} />
+                            <Route path="repuestos" element={<Repuestos />} />
+                            <Route path="inventario" element={<Inventario />} />
+                            <Route path="ventas" element={<Ventas />} />
+                            <Route path="clientes" element={<Clientes />} />
+                            <Route path="garantias" element={<Garantias />} />
+                        </Route>
+
+                        {/* 404 */}
+                        <Route path="*" element={<NotFound />} />
+                    </Routes>
+                </CartProvider>
+            </AuthProvider>
         </BrowserRouter>
     );
 }
