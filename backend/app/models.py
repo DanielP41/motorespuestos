@@ -32,3 +32,30 @@ class Repuesto(Base):
     is_active = Column(Boolean, default=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class Venta(Base):
+    __tablename__ = "ventas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fecha = Column(DateTime, default=datetime.datetime.utcnow)
+    cliente_id = Column(Integer, index=True, nullable=True) # Future extension
+    vendedor_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    total = Column(Float, nullable=False)
+    metodo_pago = Column(String, nullable=False) # efectivo, tarjeta, transferencia
+    estado = Column(String, default="completado") # completado, cancelado
+
+    vendedor = relationship("User")
+    items = relationship("ItemVenta", back_populates="venta", cascade="all, delete-orphan")
+
+class ItemVenta(Base):
+    __tablename__ = "items_venta"
+
+    id = Column(Integer, primary_key=True, index=True)
+    venta_id = Column(Integer, ForeignKey("ventas.id"), nullable=False)
+    repuesto_id = Column(Integer, ForeignKey("repuestos.id"), nullable=False)
+    cantidad = Column(Integer, nullable=False)
+    precio_unitario = Column(Float, nullable=False)
+    subtotal = Column(Float, nullable=False)
+
+    venta = relationship("Venta", back_populates="items")
+    repuesto = relationship("Repuesto")
