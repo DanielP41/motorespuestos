@@ -1,6 +1,5 @@
-<<<<<<< HEAD
 /* Home page styles */
-=======
+
 /* Announcement Bar */
 .announcement-bar {
     background: #000;
@@ -29,7 +28,6 @@
     letter-spacing: 0.08em;
     white-space: nowrap;
 }
->>>>>>> temp-main
 
 /* Hero */
 .hero {
@@ -75,11 +73,7 @@
     display: flex;
     align-items: center;
     gap: 80px;
-<<<<<<< HEAD
     padding-top: 80px;
-=======
-    padding-top: 24px;
->>>>>>> temp-main
     padding-bottom: 60px;
     position: relative;
     z-index: 1;
@@ -131,33 +125,6 @@
     justify-content: center;
 }
 
-<<<<<<< HEAD
-.hero-circle {
-    width: 360px;
-    height: 360px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 40% 40%, rgba(255, 106, 0, 0.15), transparent 70%),
-        var(--surface);
-    border: 1px solid rgba(255, 106, 0, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 8rem;
-    box-shadow: 0 0 80px rgba(255, 106, 0, 0.15);
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-12px);
-    }
-=======
 /* Hero slideshow */
 .hero-slideshow {
     position: relative;
@@ -207,7 +174,6 @@
 .slide-dot.active {
     background: var(--accent);
     transform: scale(1.3);
->>>>>>> temp-main
 }
 
 /* Stats bar */
@@ -258,17 +224,6 @@
 
 .cat-card {
     display: flex;
-<<<<<<< HEAD
-    align-items: center;
-    gap: 10px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 16px;
-    text-decoration: none;
-    color: var(--text-secondary);
-    transition: var(--transition);
-=======
     flex-direction: column;
     background: var(--surface);
     border: 1px solid var(--border);
@@ -278,20 +233,12 @@
     color: var(--text-secondary);
     transition: var(--transition);
     gap: 0;
->>>>>>> temp-main
 }
 
 .cat-card:hover {
     border-color: var(--accent);
     color: var(--text);
     background: var(--surface-2);
-<<<<<<< HEAD
-    transform: translateX(4px);
-}
-
-.cat-icon {
-    font-size: 1.4rem;
-=======
     transform: translateY(-3px);
     box-shadow: 0 8px 24px rgba(255, 106, 0, 0.12);
 }
@@ -312,35 +259,22 @@
 
 .cat-card:hover .cat-img {
     transform: scale(1.06);
->>>>>>> temp-main
 }
 
 .cat-name {
     flex: 1;
-<<<<<<< HEAD
-    font-size: 0.875rem;
-    font-weight: 500;
-=======
     font-size: 0.9rem;
     font-weight: 600;
     padding: 12px 16px;
     color: inherit;
->>>>>>> temp-main
 }
 
 .cat-arrow {
     color: var(--muted-dark);
     transition: var(--transition);
-<<<<<<< HEAD
-}
-
-.cat-card:hover .cat-arrow {
-    color: var(--accent);
-=======
     margin: auto 12px auto 0;
     flex-shrink: 0;
     align-self: center;
->>>>>>> temp-main
 }
 
 /* Product cards */
@@ -356,11 +290,7 @@
     border-radius: var(--radius);
     overflow: hidden;
     background: var(--surface-2);
-<<<<<<< HEAD
-    aspect-ratio: 4/3;
-=======
     aspect-ratio: 1/1;
->>>>>>> temp-main
 }
 
 .product-img {
@@ -432,31 +362,6 @@
     border-bottom: 1px solid var(--border);
 }
 
-<<<<<<< HEAD
-.brands-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-    margin-top: 24px;
-}
-
-.brand-chip {
-    padding: 8px 20px;
-    background: var(--bg);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-full);
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-decoration: none;
-    transition: var(--transition);
-}
-
-.brand-chip:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-=======
 .brands-logo-row {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
@@ -492,17 +397,12 @@
 
 .brand-logo-item:hover img {
     transform: scale(1.08);
->>>>>>> temp-main
 }
 
 /* Why grid */
 .why-grid {
     display: grid;
-<<<<<<< HEAD
-    grid-template-columns: repeat(4, 1fr);
-=======
     grid-template-columns: repeat(3, 1fr);
->>>>>>> temp-main
     gap: 20px;
 }
 
@@ -554,39 +454,6 @@
     margin-bottom: 8px;
 }
 
-<<<<<<< HEAD
-/* Footer */
-.site-footer {
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    padding: 24px 0;
-}
-
-.footer-inner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.footer-logo {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 1rem;
-}
-
-.footer-links {
-    display: flex;
-    gap: 20px;
-}
-
-.footer-links a {
-    font-size: 0.82rem;
-=======
 /* Social Section */
 .social-section {
     padding: 80px 0;
@@ -728,31 +595,6 @@
     margin-top: 8px;
 }
 
-.footer-brand-box {
-    border: 2px solid var(--text);
-    padding: 12px 20px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-}
-
-.footer-brand-number {
-    font-family: var(--font-display);
-    font-size: 2.2rem;
-    font-weight: 900;
-    color: var(--text);
-    line-height: 1;
-}
-
-.footer-brand-tagline {
-    font-family: var(--font-display);
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-}
-
 .footer-social {
     display: flex;
     gap: 10px;
@@ -766,32 +608,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
->>>>>>> temp-main
     color: var(--muted);
     transition: var(--transition);
 }
 
-<<<<<<< HEAD
-.footer-links a:hover {
-    color: var(--accent);
-}
-
-=======
 .social-btn:hover {
     border-color: var(--accent);
     color: var(--accent);
 }
-
 
 /* Responsive footer */
 @media (max-width: 1024px) {
     .footer-grid {
         grid-template-columns: 1fr 1fr;
         gap: 32px;
-    }
-
-    .footer-brand-col {
-        align-items: flex-start;
     }
 
     .footer-copy {
@@ -809,8 +639,7 @@
     }
 }
 
->>>>>>> temp-main
-/* Responsive */
+/* Responsive general */
 @media (max-width: 1024px) {
     .categories-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -854,13 +683,6 @@
         flex-direction: column;
         text-align: center;
     }
-
-    .footer-inner {
-        flex-direction: column;
-        text-align: center;
-    }
-<<<<<<< HEAD
-=======
 }
 
 /* Scroll Reveal Animations */
@@ -887,5 +709,4 @@
 
 .reveal-delay-3 {
     transition-delay: 0.3s;
->>>>>>> temp-main
 }
