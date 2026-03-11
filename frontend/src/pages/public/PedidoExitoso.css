@@ -1,0 +1,105 @@
+/* PedidoExitoso Page */
+
+.pedido-exitoso-page {
+    min-height: calc(100vh - var(--nav-height));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    background: radial-gradient(circle at 50% 20%, rgba(255, 106, 0, 0.06) 0%, transparent 60%);
+}
+
+.pedido-exitoso-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 60px 48px;
+    max-width: 520px;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.pedido-check-circle {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: rgba(46, 204, 113, 0.12);
+    border: 2px solid rgba(46, 204, 113, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2ecc71;
+    animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pop-in {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.pedido-exitoso-card h1 {
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+.pedido-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    max-width: 360px;
+}
+
+.pedido-info-box {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.pedido-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.pedido-info-row span:first-child {
+    color: var(--text-secondary);
+}
+
+.pedido-numero {
+    font-family: monospace;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.pedido-total {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text);
+}
+
+.pedido-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 8px;
+}

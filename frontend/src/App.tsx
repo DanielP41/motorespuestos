@@ -13,7 +13,7 @@ import Catalogo from './pages/public/Catalogo';
 import ProductoDetalle from './pages/public/ProductoDetalle';
 import Carrito from './pages/public/Carrito';
 import Checkout from './pages/public/Checkout';
-import PedidoConfirmado from './pages/public/PedidoConfirmado';
+import PedidoExitoso from './pages/public/PedidoExitoso';
 import Contacto from './pages/public/Contacto';
 import Login from './pages/public/Login';
 import Registro from './pages/public/Registro';
@@ -53,7 +53,7 @@ export default function App() {
                             <Route path="/catalogo/:id" element={<ProductoDetalle />} />
                             <Route path="/carrito" element={<Carrito />} />
                             <Route path="/checkout" element={<Checkout />} />
-                            <Route path="/pedido/:id" element={<PedidoConfirmado />} />
+                            <Route path="/pedido-exitoso" element={<PedidoExitoso />} />
                             <Route path="/contacto" element={<Contacto />} />
                             <Route path="/terminos" element={<Terminos />} />
                             <Route path="/privacidad" element={<Privacidad />} />

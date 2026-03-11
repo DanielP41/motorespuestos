@@ -2,7 +2,8 @@
  * Shared utility functions
  */
 
-export function formatCOP(amount: number): string {
+export function formatCOP(amount: number | null | undefined): string {
+    if (amount === null || amount === undefined) return '$0';
     return `$${amount.toLocaleString('es-CO')}`;
 }
 

@@ -23,10 +23,17 @@ export default function AdminLayout() {
         <div className="admin-shell">
             {/* Sidebar */}
             <aside className={`admin-sidebar ${collapsed ? 'collapsed' : ''}`}>
-                <div className="sidebar-header">
+                <div
+                    className="sidebar-header"
+                    style={!collapsed ? { height: '160px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' } : {}}
+                >
                     <Link to="/admin" className="sidebar-logo">
-                        <Zap size={20} className="sidebar-logo-icon" />
-                        {!collapsed && <span>MOTO<span>ADMIN</span></span>}
+                        <img
+                            src="/logo_xl.png?v=3"
+                            alt="3M Motos"
+                            className="sidebar-logo-img"
+                            style={!collapsed ? { height: '120px', width: 'auto', objectFit: 'contain', display: 'block' } : {}}
+                        />
                     </Link>
                     <button
                         className="collapse-btn"

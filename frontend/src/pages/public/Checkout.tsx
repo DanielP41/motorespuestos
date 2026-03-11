@@ -55,7 +55,13 @@ export default function Checkout() {
             const result = await crearVenta(ventaData);
             setSubmitted(true);
             clearCart();
-            navigate(`/pedido/MRP-2026-${result.id.toString().padStart(4, '0')}`);
+            navigate('/pedido-exitoso', {
+                state: {
+                    numeroPedido: result.numero_factura || `MRP-${result.id.toString().padStart(4, '0')}`,
+                    total: total,
+                    metodo: metodo,
+                }
+            });
         } catch (err: any) {
             console.error('Checkout error:', err);
             setError(err.message || 'Error al procesar el pedido. Verificá tu sesión.');

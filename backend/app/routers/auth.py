@@ -5,7 +5,7 @@ from datetime import timedelta
 from jose import JWTError, jwt
 
 from ..database import get_db
-from ..models import User
+from ..models import User, Cliente
 from ..schemas.user import UserCreate, UserOut, Token, TokenData
 from ..auth_utils import verify_password, get_password_hash, create_access_token, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
@@ -21,13 +21,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        sub: str = payload.get("sub")
+        role: str = payload.get("role")
+        if sub is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
+        token_data = TokenData(username=sub)
     except JWTError:
         raise credentials_exception
-    user = db.query(User).filter(User.username == token_data.username).first()
+    
+    if role in ["admin", "vendedor"]:
+        user = db.query(User).filter(User.username == token_data.username).first()
+    else:
+        user = db.query(Cliente).filter(Cliente.email == token_data.username).first()
+        
     if user is None:
         raise credentials_exception
     return user
@@ -58,17 +64,27 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 @router.post("/token", response_model=Token)
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    # Try User first
     user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    if user and verify_password(form_data.password, user.hashed_password):
+        role = user.role
+        sub = user.username
+    else:
+        # Try Client
+        cliente = db.query(Cliente).filter(Cliente.email == form_data.username).first()
+        if cliente and cliente.hashed_password and verify_password(form_data.password, cliente.hashed_password):
+            role = "cliente"
+            sub = cliente.email
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username, "role": user.role}, expires_delta=access_token_expires
+        data={"sub": sub, "role": role}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 

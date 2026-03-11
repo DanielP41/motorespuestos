@@ -8,6 +8,27 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- =============================================================
+-- SECCIÓN 0: USUARIOS Y AUTENTICACIÓN
+-- =============================================================
+
+CREATE TABLE usuarios (
+    id          SERIAL PRIMARY KEY,
+    username    VARCHAR(100) NOT NULL UNIQUE,
+    email       VARCHAR(150) NOT NULL UNIQUE,
+    hashed_password VARCHAR(255) NOT NULL,
+    nombre_completo VARCHAR(255),
+    role        VARCHAR(20) NOT NULL DEFAULT 'vendedor', -- admin, vendedor
+    is_active   BOOLEAN NOT NULL DEFAULT true,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Admin por defecto (admin / admin123)
+-- Hash generado con bcrypt
+INSERT INTO usuarios (username, email, hashed_password, role, nombre_completo)
+VALUES ('admin', 'admin@motorespuestos.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6L6s57gzRTf9Hio6', 'admin', 'Administrador Principal');
+
+-- =============================================================
 -- SECCIÓN 1: ENUMs
 -- =============================================================
 
@@ -153,6 +174,7 @@ CREATE TABLE cliente (
     nombre              VARCHAR(255)   NOT NULL,
     telefono            VARCHAR(30),
     email               VARCHAR(255),
+    hashed_password     VARCHAR(255),
     direccion           TEXT,
     credito_habilitado  BOOLEAN        NOT NULL DEFAULT false,
     limite_credito      NUMERIC(14, 2) NOT NULL DEFAULT 0 CHECK (limite_credito >= 0),

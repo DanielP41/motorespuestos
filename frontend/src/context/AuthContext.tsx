@@ -5,7 +5,7 @@ interface UserProfile {
     username: string;
     email: string;
     nombre_completo?: string;
-    role: 'admin' | 'vendedor';
+    role: 'admin' | 'vendedor' | 'cliente';
 }
 
 interface AuthContextType {
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const fetchUserProfile = useCallback(async (authToken: string) => {
         try {
-            const resp = await fetch('http://localhost:8000/auth/me', {
+            const resp = await fetch('http://localhost:8001/auth/me', {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             });
             if (resp.ok) {
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             formData.append('username', username);
             formData.append('password', password);
 
-            const resp = await fetch('http://localhost:8000/auth/token', {
+            const resp = await fetch('http://localhost:8001/auth/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData

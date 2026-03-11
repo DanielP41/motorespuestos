@@ -12,21 +12,18 @@ router = APIRouter()
 def list_repuestos(
     skip: int = 0, 
     limit: int = 100, 
-    categoria: Optional[str] = None,
-    marca: Optional[str] = None,
+    categoria_id: Optional[int] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Repuesto).filter(Repuesto.is_active == True)
-    if categoria:
-        query = query.filter(Repuesto.categoria == categoria)
-    if marca:
-        query = query.filter(Repuesto.marca == marca)
+    query = db.query(Repuesto).filter(Repuesto.estado == "activo")
+    if categoria_id:
+        query = query.filter(Repuesto.categoria_id == categoria_id)
     
     return query.offset(skip).limit(limit).all()
 
 @router.get("/{id}", response_model=RepuestoOut)
 def get_repuesto(id: int, db: Session = Depends(get_db)):
-    repuesto = db.query(Repuesto).filter(Repuesto.id == id, Repuesto.is_active == True).first()
+    repuesto = db.query(Repuesto).filter(Repuesto.id == id, Repuesto.estado == "activo").first()
     if not repuesto:
         raise HTTPException(status_code=404, detail="Repuesto no encontrado")
     return repuesto
@@ -34,13 +31,12 @@ def get_repuesto(id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=RepuestoOut, status_code=status.HTTP_201_CREATED)
 def create_repuesto(
     repuesto: RepuestoCreate, 
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
-    # Check if code already exists
-    existing = db.query(Repuesto).filter(Repuesto.codigo == repuesto.codigo).first()
+    # Check if sku already exists
+    existing = db.query(Repuesto).filter(Repuesto.sku == repuesto.sku).first()
     if existing:
-        raise HTTPException(status_code=400, detail="El código de repuesto ya existe")
+        raise HTTPException(status_code=400, detail="El SKU de repuesto ya existe")
     
     db_repuesto = Repuesto(**repuesto.model_dump())
     db.add(db_repuesto)
@@ -52,8 +48,7 @@ def create_repuesto(
 def update_repuesto(
     id: int, 
     repuesto_update: RepuestoUpdate, 
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     db_repuesto = db.query(Repuesto).filter(Repuesto.id == id).first()
     if not db_repuesto:
@@ -70,51 +65,102 @@ def update_repuesto(
 @router.delete("/{id}")
 def delete_repuesto(
     id: int, 
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     db_repuesto = db.query(Repuesto).filter(Repuesto.id == id).first()
     if not db_repuesto:
         raise HTTPException(status_code=404, detail="Repuesto no encontrado")
     
     # Soft delete
-    db_repuesto.is_active = False
+    db_repuesto.estado = "descontinuado"
     db.commit()
     return {"message": "Repuesto desactivado exitosamente"}
 
 @router.post("/seed", status_code=status.HTTP_201_CREATED)
-def seed_repuestos(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    # Check if already seeded
-    count = db.query(Repuesto).count()
-    if count > 5:
-        return {"message": "La base de datos ya tiene datos", "count": count}
+def seed_repuestos(db: Session = Depends(get_db)):
+    from ..models import Categoria, UnidadMedida
 
-    mock_data = [
-        {"codigo": "FRE-001", "nombre": "Pastillas de Freno Delantero", "categoria": "Frenos", "marca": "Fras-le", "precio": 15500.0, "stock": 25, "compatibilidad": "Honda CB190, XR150"},
-        {"codigo": "TRA-002", "nombre": "Kit de Transmisión Reforzado", "categoria": "Transmisión", "marca": "DID", "precio": 45000.0, "stock": 12, "compatibilidad": "Yamaha FZ16, YS250"},
-        {"codigo": "LUB-003", "nombre": "Aceite Motul 7100 10W40", "categoria": "Lubricantes", "marca": "Motul", "precio": 18900.0, "stock": 50, "compatibilidad": "Universal 4T"},
-        {"codigo": "FIL-004", "nombre": "Filtro de Aceite Original", "categoria": "Filtros", "marca": "Honda", "precio": 8500.0, "stock": 40, "compatibilidad": "Línea Honda"},
-        {"codigo": "BAT-005", "nombre": "Batería Yuasa 12V 7Ah", "categoria": "Eléctrico", "marca": "Yuasa", "precio": 32000.0, "stock": 15, "compatibilidad": "Bajas y Medianas cilindradas"},
-        {"codigo": "MOT-006", "nombre": "Pistón y Aros Standard", "categoria": "Motor", "marca": "Mahle", "precio": 28000.0, "stock": 8, "compatibilidad": "Bajaj Rouser 200"},
-        {"codigo": "EST-007", "nombre": "Estriberas de Aluminio", "categoria": "Chasis", "marca": "Protaper", "precio": 12500.0, "stock": 10, "compatibilidad": "Cross/Enduro"},
-        {"codigo": "NEU-008", "nombre": "Cubierta Pirelli Angel City 100/80", "categoria": "Neumáticos", "marca": "Pirelli", "precio": 75000.0, "stock": 6, "compatibilidad": "Delantera Calle"},
-        {"codigo": "ESC-009", "nombre": "Escape Deportivo Akrapovic Réplica", "categoria": "Escape", "marca": "Generic", "precio": 55000.0, "stock": 4, "compatibilidad": "Universal 38-51mm"},
-        {"codigo": "BUI-010", "nombre": "Bujía NGK Iridium CR9EIX", "categoria": "Eléctrico", "marca": "NGK", "precio": 9500.0, "stock": 30, "compatibilidad": "Altas prestaciones"},
-        {"codigo": "FRE-011", "nombre": "Disco de Freno Lobulado", "categoria": "Frenos", "marca": "Wavy", "precio": 22000.0, "stock": 10, "compatibilidad": "Honda Tornado, XRE300"},
-        {"codigo": "TRA-012", "nombre": "Cadena RK 520 con O-Ring", "categoria": "Transmisión", "marca": "RK", "precio": 38000.0, "stock": 14, "compatibilidad": "Universal 520"},
-        {"codigo": "CAB-013", "nombre": "Cable de Embrague", "categoria": "Cables", "marca": "Original", "precio": 4500.0, "stock": 35, "compatibilidad": "Yamaha YBR 125"},
-        {"codigo": "CAR-014", "nombre": "Carburador Completo 28mm", "categoria": "Motor", "marca": "Keihin", "precio": 42000.0, "stock": 5, "compatibilidad": "Universal 125-250cc"},
-        {"codigo": "LUC-015", "nombre": "Faro LED Principal 7 pulg", "categoria": "Iluminación", "marca": "Custom", "precio": 29000.0, "stock": 7, "compatibilidad": "Cafe Racer / Custom"},
-        {"codigo": "ESPE-016", "nombre": "Espejos Deportivos Carbon", "categoria": "Accesorios", "marca": "Rizoma Style", "precio": 12000.0, "stock": 20, "compatibilidad": "Naked / Sport"},
-        {"codigo": "JUN-017", "nombre": "Kit de Juntas Completo", "categoria": "Motor", "marca": "Athena", "precio": 18000.0, "stock": 12, "compatibilidad": "Honda CG 150 Titan"},
-        {"codigo": "TRA-018", "nombre": "Corona de Aluminio 45T", "categoria": "Transmisión", "marca": "Supersprox", "precio": 31000.0, "stock": 6, "compatibilidad": "KTM Duke 200/390"},
-        {"codigo": "SUS-019", "nombre": "Retenes de Suspensión (Par)", "categoria": "Suspensión", "marca": "Athena", "precio": 8500.0, "stock": 22, "compatibilidad": "Barras 37mm"},
-        {"codigo": "FIL-020", "nombre": "Filtro de Aire K&N Lavable", "categoria": "Filtros", "marca": "K&N", "precio": 48000.0, "stock": 5, "compatibilidad": "Yamaha MT-03"}
+    rep_count = db.query(Repuesto).count()
+    if rep_count > 5:
+        return {"message": "Ya tiene datos", "repuestos": rep_count}
+
+    # 1. Ensure categories exist
+    cats = [
+        ("Motor", "motor"), ("Transmision", "transmision"), ("Frenos", "frenos"),
+        ("Suspension", "suspension"), ("Electrico", "electrico"),
+        ("Carroceria", "carroceria"), ("Lubricantes", "lubricantes"), ("Filtros", "filtros")
+    ]
+    cat_ids = {}
+    for nombre, slug in cats:
+        existing = db.query(Categoria).filter(Categoria.slug == slug).first()
+        if not existing:
+            c = Categoria(nombre=nombre, slug=slug, activa=True)
+            db.add(c)
+            db.flush()
+            cat_ids[nombre] = c.id
+        else:
+            cat_ids[nombre] = existing.id
+
+    # 2. Ensure units exist
+    units = [("UND","Unidad"),("PAR","Par"),("LT","Litro"),("JGO","Juego")]
+    uid = {}
+    for codigo, nombre in units:
+        existing = db.query(UnidadMedida).filter(UnidadMedida.codigo == codigo).first()
+        if not existing:
+            u = UnidadMedida(codigo=codigo, nombre=nombre)
+            db.add(u)
+            db.flush()
+            uid[codigo] = u.id
+        else:
+            uid[codigo] = existing.id
+
+    def c(n): return cat_ids.get(n, cat_ids.get("Motor"))
+    def u(k): return uid.get(k, uid.get("UND"))
+
+    # 3. Create products
+    products = [
+        {"sku":"P-CB125-STD","nombre":"Piston STD Honda CB 125F","categoria_id":c("Motor"),"unidad_medida_id":u("UND"),"precio_compra":45000,"precio_venta":85000,"precio_venta_min":75000,"stock_actual":12,"stock_minimo":3,"es_original":True},
+        {"sku":"P-CG150-STD","nombre":"Piston STD Honda CG 150","categoria_id":c("Motor"),"unidad_medida_id":u("UND"),"precio_compra":52000,"precio_venta":95000,"precio_venta_min":85000,"stock_actual":8,"stock_minimo":2,"es_original":True},
+        {"sku":"P-NS200-STD","nombre":"Piston STD Bajaj NS 200","categoria_id":c("Motor"),"unidad_medida_id":u("UND"),"precio_compra":65000,"precio_venta":120000,"precio_venta_min":108000,"stock_actual":5,"stock_minimo":2,"es_original":True},
+        {"sku":"ANI-CB125","nombre":"Juego Anillos Honda CB 125F","categoria_id":c("Motor"),"unidad_medida_id":u("JGO"),"precio_compra":18000,"precio_venta":38000,"precio_venta_min":33000,"stock_actual":20,"stock_minimo":5,"es_original":True},
+        {"sku":"CIL-CG150","nombre":"Cilindro Honda CG 150","categoria_id":c("Motor"),"unidad_medida_id":u("UND"),"precio_compra":120000,"precio_venta":220000,"precio_venta_min":195000,"stock_actual":4,"stock_minimo":1,"es_original":True},
+        {"sku":"EMP-CUL-CG","nombre":"Empaque Culata Honda CG 150","categoria_id":c("Motor"),"unidad_medida_id":u("UND"),"precio_compra":22000,"precio_venta":45000,"precio_venta_min":39000,"stock_actual":25,"stock_minimo":5,"es_original":True},
+        {"sku":"EMP-CUL-190","nombre":"Empaque Culata Honda CB 190R","categoria_id":c("Motor"),"unidad_medida_id":u("UND"),"precio_compra":28000,"precio_venta":58000,"precio_venta_min":50000,"stock_actual":10,"stock_minimo":3,"es_original":True},
+        {"sku":"CAD-428-130","nombre":"Cadena 428 x 130 Eslabones","categoria_id":c("Transmision"),"unidad_medida_id":u("UND"),"precio_compra":35000,"precio_venta":65000,"precio_venta_min":58000,"stock_actual":22,"stock_minimo":5,"es_original":False},
+        {"sku":"CAD-520-MX","nombre":"Kit Transmision 520 MX","categoria_id":c("Transmision"),"unidad_medida_id":u("JGO"),"precio_compra":98000,"precio_venta":189000,"precio_venta_min":165000,"stock_actual":8,"stock_minimo":2,"es_original":False},
+        {"sku":"PIN-DEL-190","nombre":"Pinon Delantero Honda CB 190 14T","categoria_id":c("Transmision"),"unidad_medida_id":u("UND"),"precio_compra":12000,"precio_venta":22000,"precio_venta_min":19000,"stock_actual":30,"stock_minimo":8,"es_original":False},
+        {"sku":"COR-CG150","nombre":"Corona 37T Honda CG 150","categoria_id":c("Transmision"),"unidad_medida_id":u("UND"),"precio_compra":28000,"precio_venta":52000,"precio_venta_min":46000,"stock_actual":15,"stock_minimo":4,"es_original":False},
+        {"sku":"KIT-CAD-YBR","nombre":"Kit Cadena Yamaha YBR 125","categoria_id":c("Transmision"),"unidad_medida_id":u("JGO"),"precio_compra":75000,"precio_venta":142000,"precio_venta_min":125000,"stock_actual":6,"stock_minimo":2,"es_original":True},
+        {"sku":"DIS-EMB-NS","nombre":"Juego Discos Embrague Bajaj NS200","categoria_id":c("Transmision"),"unidad_medida_id":u("JGO"),"precio_compra":68000,"precio_venta":125000,"precio_venta_min":110000,"stock_actual":7,"stock_minimo":2,"es_original":True},
+        {"sku":"CAB-EMB-CG","nombre":"Cable Embrague Honda CG 150","categoria_id":c("Transmision"),"unidad_medida_id":u("UND"),"precio_compra":10000,"precio_venta":18500,"precio_venta_min":16000,"stock_actual":35,"stock_minimo":8,"es_original":False},
+        {"sku":"PAS-DEL-190","nombre":"Pastillas Freno Delantero CB 190R","categoria_id":c("Frenos"),"unidad_medida_id":u("PAR"),"precio_compra":28000,"precio_venta":55000,"precio_venta_min":48000,"stock_actual":18,"stock_minimo":4,"es_original":False},
+        {"sku":"PAS-CB125","nombre":"Pastillas Freno Honda CB 125F","categoria_id":c("Frenos"),"unidad_medida_id":u("PAR"),"precio_compra":18000,"precio_venta":35000,"precio_venta_min":30000,"stock_actual":25,"stock_minimo":6,"es_original":False},
+        {"sku":"DSC-DEL-190","nombre":"Disco Freno Delantero CB 190R","categoria_id":c("Frenos"),"unidad_medida_id":u("UND"),"precio_compra":55000,"precio_venta":105000,"precio_venta_min":92000,"stock_actual":6,"stock_minimo":2,"es_original":False},
+        {"sku":"DSC-MT03","nombre":"Disco Freno Delantero Yamaha MT03","categoria_id":c("Frenos"),"unidad_medida_id":u("UND"),"precio_compra":62000,"precio_venta":118000,"precio_venta_min":104000,"stock_actual":4,"stock_minimo":1,"es_original":False},
+        {"sku":"BOB-CB125","nombre":"Bobina Encendido Honda CB 125F","categoria_id":c("Electrico"),"unidad_medida_id":u("UND"),"precio_compra":32000,"precio_venta":62000,"precio_venta_min":55000,"stock_actual":9,"stock_minimo":2,"es_original":True},
+        {"sku":"REC-CG150","nombre":"Rectificador Regulador CG 150","categoria_id":c("Electrico"),"unidad_medida_id":u("UND"),"precio_compra":28000,"precio_venta":55000,"precio_venta_min":48000,"stock_actual":11,"stock_minimo":3,"es_original":False},
+        {"sku":"BAT-YTX7","nombre":"Bateria YTX7A-BS 12V 6Ah","categoria_id":c("Electrico"),"unidad_medida_id":u("UND"),"precio_compra":55000,"precio_venta":98000,"precio_venta_min":85000,"stock_actual":14,"stock_minimo":3,"es_original":False},
+        {"sku":"FOC-LED-H4","nombre":"Foco LED H4 Universal 35W","categoria_id":c("Electrico"),"unidad_medida_id":u("UND"),"precio_compra":18000,"precio_venta":35000,"precio_venta_min":30000,"stock_actual":40,"stock_minimo":10,"es_original":False},
+        {"sku":"ACE-10W40","nombre":"Aceite Motor 4T 10W-40 1L","categoria_id":c("Lubricantes"),"unidad_medida_id":u("LT"),"precio_compra":12000,"precio_venta":22000,"precio_venta_min":19000,"stock_actual":60,"stock_minimo":15,"es_original":False},
+        {"sku":"ACE-20W50","nombre":"Aceite Motor 4T 20W-50 1L","categoria_id":c("Lubricantes"),"unidad_medida_id":u("LT"),"precio_compra":15000,"precio_venta":28000,"precio_venta_min":24000,"stock_actual":50,"stock_minimo":12,"es_original":False},
+        {"sku":"GRA-CAD-SP","nombre":"Grasa de Cadena Spray 400ml","categoria_id":c("Lubricantes"),"unidad_medida_id":u("UND"),"precio_compra":18000,"precio_venta":32000,"precio_venta_min":28000,"stock_actual":30,"stock_minimo":8,"es_original":False},
+        {"sku":"FIL-ACE-125","nombre":"Filtro de Aceite Honda CB 125F","categoria_id":c("Filtros"),"unidad_medida_id":u("UND"),"precio_compra":8000,"precio_venta":15000,"precio_venta_min":13000,"stock_actual":45,"stock_minimo":10,"es_original":True},
+        {"sku":"FIL-ACE-150","nombre":"Filtro de Aceite Honda CG 150","categoria_id":c("Filtros"),"unidad_medida_id":u("UND"),"precio_compra":9000,"precio_venta":17000,"precio_venta_min":15000,"stock_actual":38,"stock_minimo":10,"es_original":True},
+        {"sku":"FIL-AIR-125","nombre":"Filtro de Aire Honda CB 125F","categoria_id":c("Filtros"),"unidad_medida_id":u("UND"),"precio_compra":12000,"precio_venta":22000,"precio_venta_min":19000,"stock_actual":28,"stock_minimo":6,"es_original":False},
+        {"sku":"FIL-AIR-200","nombre":"Filtro de Aire Bajaj NS 200","categoria_id":c("Filtros"),"unidad_medida_id":u("UND"),"precio_compra":14000,"precio_venta":26000,"precio_venta_min":22000,"stock_actual":20,"stock_minimo":5,"es_original":True},
+        {"sku":"KIT-FIL-190","nombre":"Kit Filtros Honda CB 190R","categoria_id":c("Filtros"),"unidad_medida_id":u("JGO"),"precio_compra":28000,"precio_venta":52000,"precio_venta_min":46000,"stock_actual":12,"stock_minimo":3,"es_original":False},
+        {"sku":"ESC-CB125L","nombre":"Espadin Izq Honda CB 125","categoria_id":c("Carroceria"),"unidad_medida_id":u("UND"),"precio_compra":35000,"precio_venta":65000,"precio_venta_min":58000,"stock_actual":7,"stock_minimo":2,"es_original":False},
+        {"sku":"FAR-CG150","nombre":"Faro Delantero Honda CG 150","categoria_id":c("Carroceria"),"unidad_medida_id":u("UND"),"precio_compra":45000,"precio_venta":88000,"precio_venta_min":78000,"stock_actual":5,"stock_minimo":1,"es_original":False},
+        {"sku":"MAL-38L","nombre":"Maleta Trasera Moto 38 Litros","categoria_id":c("Carroceria"),"unidad_medida_id":u("UND"),"precio_compra":85000,"precio_venta":159000,"precio_venta_min":140000,"stock_actual":8,"stock_minimo":2,"es_original":False},
     ]
 
-    for item in mock_data:
-        db_repuesto = Repuesto(**item)
-        db.add(db_repuesto)
-    
+    created = 0
+    for p in products:
+        existing = db.query(Repuesto).filter(Repuesto.sku == p["sku"]).first()
+        if not existing:
+            db.add(Repuesto(**p))
+            created += 1
+
     db.commit()
-    return {"message": "Base de datos poblada exitosamente", "count": len(mock_data)}
+    total = db.query(Repuesto).count()
+    return {"message": "Seed completo", "created": created, "total": total}

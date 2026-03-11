@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Menu, X, Zap, Search } from 'lucide-react';
+import { ShoppingCart, Menu, X, Search, User as UserIcon, LogOut } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
+// import logo3M from '../assets/logo_xl.png';
 import './Navbar.css';
 
 export default function Navbar() {
     const { count } = useCart();
+    const { isAuthenticated, user, logout } = useAuth();
     const [menuOpen, setMenuOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [query, setQuery] = useState('');
     const navigate = useNavigate();
@@ -23,20 +27,26 @@ export default function Navbar() {
     return (
         <nav className="navbar">
             <div className="navbar-inner container">
-                {/* Logo */}
-                <Link to="/" className="navbar-logo">
-                    <Zap size={22} className="logo-icon" />
-                    <span className="logo-text">MOTO<span>REPUESTOS</span></span>
-                </Link>
-
-                {/* Nav links - desktop */}
+                {/* Nav links - desktop (Left) */}
                 <ul className="navbar-links">
                     <li><NavLink to="/catalogo">Catálogo</NavLink></li>
                     <li><NavLink to="/contacto">Contacto</NavLink></li>
                 </ul>
 
-                {/* Actions */}
+                {/* Logo (Center) */}
+                <Link to="/" className="navbar-logo">
+                    <img src="/logo_xl.png" alt="3M Motos" className="logo-img" />
+                </Link>
+
+                {/* Actions (Right) */}
                 <div className="navbar-actions">
+                    {/* Login Button */}
+                    {!isAuthenticated && (
+                        <NavLink to="/login" className="nav-login-link desktop-only">
+                            ENTRAR
+                        </NavLink>
+                    )}
+
                     {/* Search */}
                     <button
                         className="btn btn-icon navbar-action-btn"
@@ -45,6 +55,40 @@ export default function Navbar() {
                     >
                         <Search size={18} />
                     </button>
+
+                    {/* User profile / User Menu */}
+                    {isAuthenticated ? (
+                        <div className="user-menu-wrapper">
+                            <button
+                                className="btn btn-icon navbar-action-btn user-profile-btn"
+                                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                            >
+                                <UserIcon size={18} />
+                            </button>
+                            {userMenuOpen && (
+                                <div className="user-dropdown-menu">
+                                    <div className="user-dropdown-header">
+                                        <p className="user-name">{user?.nombre_completo || user?.username || 'Usuario'}</p>
+                                        <p className="user-role">{user?.role === 'cliente' ? 'Cliente' : 'Staff'}</p>
+                                    </div>
+                                    <div className="user-dropdown-divider"></div>
+                                    {user?.role !== 'cliente' && (
+                                        <Link to="/admin" className="user-dropdown-item" onClick={() => setUserMenuOpen(false)}>Panel Admin</Link>
+                                    )}
+                                    <button
+                                        className="user-dropdown-item logout-btn"
+                                        onClick={() => { logout(); setUserMenuOpen(false); }}
+                                    >
+                                        <LogOut size={14} /> Cerrar Sesión
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <Link to="/login" className="btn btn-icon navbar-action-btn mobile-only-login" title="Iniciar Sesión">
+                            <UserIcon size={18} />
+                        </Link>
+                    )}
 
                     {/* Cart */}
                     <Link to="/carrito" className="cart-btn" aria-label="Carrito">
@@ -85,6 +129,7 @@ export default function Navbar() {
                 <div className="navbar-mobile-menu">
                     <NavLink to="/catalogo" onClick={() => setMenuOpen(false)}>Catálogo</NavLink>
                     <NavLink to="/contacto" onClick={() => setMenuOpen(false)}>Contacto</NavLink>
+                    <NavLink to="/login" onClick={() => setMenuOpen(false)}>Iniciar Sesión</NavLink>
                     <NavLink to="/carrito" onClick={() => setMenuOpen(false)}>
                         Carrito {count > 0 && `(${count})`}
                     </NavLink>

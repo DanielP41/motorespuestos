@@ -134,15 +134,11 @@ export default function Home() {
                     <div className="hero-glow" />
                 </div>
                 <div className="container hero-inner">
-                    <div className="hero-content">
-                        <div className="hero-badge">
-                            <Zap size={12} />
-                            <span>Envío en 24 horas</span>
-                        </div>
+                    <div className="hero-content" style={{ paddingTop: '30px' }}>
                         <h1>Repuestos de moto<br /><span className="text-accent">originales y alternativos</span></h1>
                         <p>
                             Todo lo que tu moto necesita, en un solo lugar. Honda, Yamaha,
-                            Suzuki, Bajaj, Kawasaki y más marcas con garantía garantizada.
+                            Suzuki, Bajaj, Kawasaki e más marcas con garantía garantizada.
                         </p>
                         <div className="hero-actions">
                             <Link to="/catalogo" className="btn btn-primary btn-lg">
@@ -177,88 +173,6 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* Stats bar */}
-                <div className="stats-bar">
-                    <div className="container stats-inner">
-                        {stats.map(s => (
-                            <div key={s.label} className="stat-item">
-                                <span className="stat-value">{s.value}</span>
-                                <span className="stat-label">{s.label}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* ── CATEGORÍAS ── */}
-            <section className="section reveal">
-                <div className="container">
-                    <div className="section-title">
-                        <div className="accent-line" />
-                        <h2>Categorías</h2>
-                        <p className="text-muted">Encontrá lo que buscás por tipo de repuesto</p>
-                    </div>
-                    <div className="categories-grid">
-                        {rootCats?.map(cat => (
-                            <Link key={cat.id} to={`/catalogo?categoria=${cat.slug}`} className="cat-card">
-                                <div className="cat-img-wrap">
-                                    <img src={catImages[cat.slug] || catMotor} alt={cat.nombre} className="cat-img" />
-                                </div>
-                                <span className="cat-name">{cat.nombre}</span>
-                                <ChevronRight size={14} className="cat-arrow" aria-hidden="true" />
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            {/* ── PRODUCTOS DESTACADOS ── */}
-            <section className="section reveal" style={{ paddingTop: 0 }}>
-                <div className="container">
-                    <div className="section-title">
-                        <div className="accent-line" />
-                        <h2>Más vendidos</h2>
-                        <p className="text-muted">Los repuestos que más buscan nuestros clientes</p>
-                    </div>
-                    <div className="grid-products">
-                        {featuredLoading
-                            ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
-                            : featured?.map(rep => (
-                                <Link key={rep.id} to={`/catalogo/${rep.id}`} className="product-card card card-hover">
-                                    <div className="product-img-wrap">
-                                        <img
-                                            src={rep.imagenes?.[0]?.url}
-                                            alt={rep.nombre}
-                                            className="product-img"
-                                            loading="lazy"
-                                        />
-                                        {rep.es_original && (
-                                            <span className="badge badge-original product-badge">Original</span>
-                                        )}
-                                    </div>
-                                    <div className="product-info">
-                                        <span className="product-category">{rep.categoria?.nombre}</span>
-                                        <h4 className="product-name">{rep.nombre}</h4>
-                                        <div className="product-footer">
-                                            <span className="product-price">{formatCOP(rep.precio_venta)}</span>
-                                            <span className="product-stock">
-                                                {rep.stock_actual > 0
-                                                    ? `${rep.stock_actual} en stock`
-                                                    : <span className="text-danger">Agotado</span>
-                                                }
-                                            </span>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))
-                        }
-                    </div>
-                    <div style={{ textAlign: 'center', marginTop: 32 }}>
-                        <Link to="/catalogo" className="btn btn-secondary btn-lg">
-                            Ver todos los repuestos <ArrowRight size={18} aria-hidden="true" />
-                        </Link>
-                    </div>
-                </div>
             </section>
 
             {/* ── MARCAS ── */}
@@ -288,6 +202,28 @@ export default function Home() {
                     </div>
                 </div>
             </section>
+
+            {/* ── CATEGORÍAS ── */}
+            <section className="section reveal">
+                <div className="container">
+                    <div className="section-title">
+                        <div className="accent-line" />
+                        <h2>Categorías</h2>
+                        <p className="text-muted">Encontrá lo que buscás por tipo de repuesto</p>
+                    </div>
+                    <div className="categories-grid">
+                        {rootCats?.map(cat => (
+                            <Link key={cat.id} to={`/catalogo?categoria=${cat.slug}`} className="cat-card">
+                                <div className="cat-img-wrap">
+                                    <img src={catImages[cat.slug] || catMotor} alt={cat.nombre} className="cat-img" />
+                                </div>
+                                <span className="cat-name">{cat.nombre}</span>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
 
             {/* ── WHY US ── */}
             <section className="section reveal">

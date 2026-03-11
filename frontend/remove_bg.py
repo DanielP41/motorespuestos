@@ -1,16 +1,32 @@
 from PIL import Image
-import numpy as np
+import os
 
-src = r'C:\Users\Dell\.gemini\antigravity\brain\21751575-0e5f-47af-b102-a8db7cfa9940\uploaded_image_1772652136422.jpg'
-dst = r'C:\Users\Dell\.gemini\antigravity\scratch\motorespuestos-master\frontend\src\assets\logo.png'
+# Paths
+assets_dir = r'c:\Users\Dell\.gemini\antigravity\scratch\motorespuestos-master\frontend\src\assets'
+src = os.path.join(assets_dir, 'logo-footer.png')
+dst = os.path.join(assets_dir, 'logo_motos_final.png')
 
+print(f"Opening {src}...")
 img = Image.open(src).convert('RGBA')
-data = np.array(img)
+datas = img.getdata()
 
-r, g, b = data[...,0], data[...,1], data[...,2]
-# Quitar fondo blanco y gris claro (checkerboard)
-mask = (r > 200) & (g > 200) & (b > 200)
-data[mask, 3] = 0
+newData = []
+# Threshold for white removal
+threshold = 240
+for item in datas:
+    if item[0] > threshold and item[1] > threshold and item[2] > threshold:
+        newData.append((255, 255, 255, 0))
+    else:
+        newData.append(item)
 
-Image.fromarray(data).save(dst, 'PNG')
-print('OK - logo.png guardado con fondo transparente')
+img.putdata(newData)
+
+# CROP TRANSPARENT BORDERS
+bbox = img.getbbox()
+if bbox:
+    img = img.crop(bbox)
+    print(f"Logo cropped to {bbox}")
+
+# SAVE
+img.save(dst, 'PNG')
+print(f"OK - {dst} saved, transparent and cropped.")

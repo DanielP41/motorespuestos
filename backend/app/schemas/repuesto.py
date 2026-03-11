@@ -3,36 +3,36 @@ from typing import Optional, List
 from datetime import datetime
 
 class RepuestoBase(BaseModel):
-    codigo: str
+    sku: str
     nombre: str
     descripcion: Optional[str] = None
-    precio: float
-    stock: int = 0
-    categoria: Optional[str] = None
-    marca: Optional[str] = None
-    compatibilidad: Optional[str] = None
-    imagen_url: Optional[str] = None
-    is_active: Optional[bool] = True
+    precio_venta: float
+    precio_compra: Optional[float] = None
+    precio_venta_min: Optional[float] = None
+    stock_actual: int = 0
+    stock_minimo: int = 0
+    categoria_id: Optional[int] = None
+    unidad_medida_id: Optional[int] = None
+    es_original: bool = True
+    estado: str = "activo"
 
 class RepuestoCreate(RepuestoBase):
     pass
 
 class RepuestoUpdate(BaseModel):
-    codigo: Optional[str] = None
+    sku: Optional[str] = None
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
-    precio: Optional[float] = None
-    stock: Optional[int] = None
-    categoria: Optional[str] = None
-    marca: Optional[str] = None
-    compatibilidad: Optional[str] = None
-    imagen_url: Optional[str] = None
-    is_active: Optional[bool] = None
+    precio_venta: Optional[float] = None
+    stock_actual: Optional[int] = None
+    categoria_id: Optional[int] = None
+    es_original: Optional[bool] = None
+    estado: Optional[str] = None
 
 class RepuestoOut(RepuestoBase):
     id: int
-    created_at: datetime
-    updated_at: datetime
+    creado_en: datetime
+    actualizado_en: datetime
 
     class Config:
         from_attributes = True

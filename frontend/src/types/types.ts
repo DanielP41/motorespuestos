@@ -79,6 +79,7 @@ export interface Repuesto {
     es_original: boolean;
     imagenes?: RepuestoImagen[];
     compatibilidades?: RepuestoCompatibilidad[];
+    imagen_url?: string;
     creado_en: string;
     actualizado_en: string;
 }

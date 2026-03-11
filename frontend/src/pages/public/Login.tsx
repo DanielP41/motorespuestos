@@ -6,7 +6,7 @@ import { Spinner } from '../../components/UI';
 import './Login.css';
 
 export default function Login() {
-    const { login } = useAuth();
+    const { login, user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [email, setEmail] = useState('');
@@ -27,10 +27,17 @@ export default function Login() {
         setLoading(false);
 
         if (ok) {
-            // After successful login, redirect. 
-            // If they came from a specific page (like Checkout), go back there.
-            // Otherwise, let AuthContext or common sense guide them.
-            navigate(from, { replace: true });
+            // Check if there's a specific redirect (e.g. from Checkout)
+            const state = location.state as any;
+            if (state?.from) {
+                navigate(state.from.pathname, { replace: true });
+            } else if (email.includes('@')) {
+                // Clients log in with email → send to catalog
+                navigate('/catalogo', { replace: true });
+            } else {
+                // Admin/seller → send to admin panel
+                navigate('/admin', { replace: true });
+            }
         } else {
             setError('Credenciales incorrectas. Verificá tu correo y contraseña.');
         }
@@ -47,13 +54,13 @@ export default function Login() {
                 <div className="login-card card">
                     <form onSubmit={handleSubmit} className="login-form">
                         <div className="form-group">
-                            <label className="form-label">Dirección de correo electrónico</label>
+                            <label className="form-label">Usuario o correo electrónico</label>
                             <div className="input-with-icon">
                                 <Mail size={18} className="input-icon" />
                                 <input
-                                    type="email"
+                                    type="text"
                                     className="form-control"
-                                    placeholder="ejemplo@correo.com"
+                                    placeholder="Nombre de usuario o correo"
                                     value={email}
                                     onChange={e => setEmail(e.target.value)}
                                     autoFocus
