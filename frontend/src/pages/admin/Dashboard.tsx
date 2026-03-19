@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Package, AlertTriangle, ShieldCheck, ShoppingBag, Loader2, BarChart3, PieChart, Coins } from 'lucide-react';
+import { TrendingUp, Package, AlertTriangle, ShieldCheck, ShoppingBag, Loader2, BarChart3, PieChart, Coins, Receipt } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getDashboardKPIs } from '../../services/api';
 
@@ -25,7 +25,17 @@ function KPICard({ icon: Icon, label, value, sub, color, to, loading }: {
 
 // Custom CSS Chart Component for Sales Trend
 function SalesChart({ data }: { data: any[] }) {
+    const allZero = data.every(d => d.monto === 0);
     const max = Math.max(...data.map(d => d.monto), 100);
+
+    if (allZero) {
+        return (
+            <div className="chart-container chart-empty">
+                <span className="chart-empty-msg">Sin ventas en los últimos 7 días</span>
+            </div>
+        );
+    }
+
     return (
         <div className="chart-container">
             <div className="chart-bars">
@@ -62,26 +72,16 @@ function CategoryChart({ data }: { data: any[] }) {
     );
 }
 
-export default function Dashboard() {
-    const [stats, setStats] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+import { useQuery } from '@tanstack/react-query';
 
-    useEffect(() => {
-        async function loadStats() {
-            setLoading(true);
-            try {
-                const data = await getDashboardKPIs();
-                setStats(data);
-            } catch (err) {
-                console.error('Error loading dashboard stats:', err);
-                setError('Error al conectar con el servidor');
-            } finally {
-                setLoading(false);
-            }
-        }
-        loadStats();
-    }, []);
+export default function Dashboard() {
+    const { data: stats, isLoading: loading, isError } = useQuery({
+        queryKey: ['dashboard_kpis'],
+        queryFn: getDashboardKPIs,
+        staleTime: 5 * 60 * 1000, // 5 minutes cache
+    });
+
+    const error = isError ? 'Error al conectar con el servidor' : '';
 
     const formatPrice = (p: number) => `$${p.toLocaleString('es-CO')}`;
 
@@ -90,7 +90,6 @@ export default function Dashboard() {
             <div className="page-header">
                 <div>
                     <h2 className="page-title">Panel de Control</h2>
-                    <p className="page-subtitle">Gestión estratégica de Moto-Repuestos</p>
                 </div>
                 <div className="header-date">
                     {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -143,6 +142,15 @@ export default function Dashboard() {
                     sub="ítems disponibles"
                     color="#2ecc71"
                     to="/admin/inventario"
+                    loading={loading}
+                />
+                <KPICard
+                    icon={Receipt}
+                    label="Ticket promedio"
+                    value={stats ? formatPrice(stats.ticketPromedio) : '$0'}
+                    sub="últimos 30 días"
+                    color="#9b59b6"
+                    to="/admin/ventas"
                     loading={loading}
                 />
             </div>
@@ -247,6 +255,31 @@ export default function Dashboard() {
                     </div>
                 </div>
 
+                {/* Warranty Detail */}
+                <div className="span-3 card">
+                    <div className="card-header">
+                        <h4 style={{ color: '#3498db', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <ShieldCheck size={18} /> Garantías por Vencer (7d)
+                        </h4>
+                        <Link to="/admin/garantias" className="text-link small">Ver todas</Link>
+                    </div>
+                    <div className="list-items">
+                        {loading ? [1, 2].map(i => <div key={i} className="shimmer mb-2" style={{ height: 50 }} />) :
+                            stats?.garantiasDetalle?.length > 0 ? stats.garantiasDetalle.map((g: any) => (
+                                <div key={g.id} className="garantia-item">
+                                    <div className="garantia-info">
+                                        <p className="garantia-repuesto">{g.repuesto} <span className="item-sku">{g.sku}</span></p>
+                                        <p className="garantia-cliente">{g.cliente} — <span className="garantia-falla">{g.falla}</span></p>
+                                    </div>
+                                    <div className="garantia-badge-group">
+                                        <span className={`badge ${g.estado === 'en_proceso' ? 'badge-warning' : 'badge-info'}`}>{g.estado}</span>
+                                        <span className="garantia-dias">{g.dias_restantes}d</span>
+                                    </div>
+                                </div>
+                            )) : <p className="empty-state">No hay garantías por vencer esta semana.</p>}
+                    </div>
+                </div>
+
                 {/* Recent Sales Table */}
                 <div className="span-3 card">
                     <div className="card-header">
@@ -258,6 +291,7 @@ export default function Dashboard() {
                             <thead>
                                 <tr>
                                     <th>Factura</th>
+                                    <th>Cliente</th>
                                     <th>Fecha/Hora</th>
                                     <th>Monto</th>
                                     <th>Estado</th>
@@ -267,6 +301,7 @@ export default function Dashboard() {
                                 {stats?.ventasRecientes?.map((v: any) => (
                                     <tr key={v.id}>
                                         <td className="font-mono text-accent">{v.numero_factura}</td>
+                                        <td className="text-muted">{v.cliente}</td>
                                         <td>{new Date(v.fecha).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}hs</td>
                                         <td className="font-bold">{formatPrice(v.total)}</td>
                                         <td><span className="badge badge-success-alt">{v.estado}</span></td>
@@ -281,7 +316,7 @@ export default function Dashboard() {
             <style>{`
                 .dashboard-container { animation: fadeIn 0.4s ease-out; }
                 .header-date { color: var(--muted); font-size: 0.9rem; font-weight: 500; }
-                .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+                .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 20px; margin-bottom: 24px; }
                 .kpi-card { display: flex; align-items: center; gap: 16px; padding: 20px !important; }
                 .kpi-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
                 .kpi-info { display: flex; flex-direction: column; gap: 2px; }
@@ -334,11 +369,27 @@ export default function Dashboard() {
                 .qty-min { color: var(--muted); font-size: 0.8rem; }
 
                 .badge-success-alt { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.2); }
+                .badge-warning { background: rgba(241,196,15,0.1); color: #f1c40f; border: 1px solid rgba(241,196,15,0.2); }
+                .badge-info { background: rgba(52,152,219,0.1); color: #3498db; border: 1px solid rgba(52,152,219,0.2); }
+
+                /* Chart empty state */
+                .chart-empty { align-items: center; justify-content: center; border: 1px dashed var(--surface-3); border-radius: var(--radius); }
+                .chart-empty-msg { color: var(--muted); font-size: 0.85rem; }
+
+                /* Garantía items */
+                .garantia-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--surface-2); border-radius: 10px; border-left: 3px solid #3498db; }
+                .garantia-info { flex: 1; min-width: 0; }
+                .garantia-repuesto { font-size: 0.85rem; font-weight: 600; margin: 0 0 2px; }
+                .garantia-cliente { font-size: 0.75rem; color: var(--muted); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .garantia-falla { font-style: italic; }
+                .garantia-badge-group { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+                .garantia-dias { font-size: 0.7rem; font-weight: 800; color: #e74c3c; }
                 .skeleton-chart { height: 200px; background: var(--surface-2); border-radius: var(--radius); }
                 .skeleton-list { height: 150px; background: var(--surface-2); border-radius: var(--radius); }
                 .empty-state { text-align: center; color: var(--muted); padding: 20px; font-size: 0.85rem; }
 
                 @media (max-width: 1100px) {
+                    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
                     .dashboard-main-grid { grid-template-columns: 1fr 1fr; }
                     .span-3 { grid-column: span 2; }
                 }

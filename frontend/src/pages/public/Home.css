@@ -33,148 +33,96 @@
 .hero {
     position: relative;
     overflow: hidden;
-    min-height: calc(100vh - var(--nav-height));
+    min-height: 500px;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    background-color: #1c1c1c;
+    background-image: url('../../assets/hero-moto.png');
+    background-size: 120%;
+    background-position: 65% 55%;
 }
 
-.hero-bg {
+.hero-overlay {
     position: absolute;
     inset: 0;
+    background:
+        linear-gradient(to right, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.65) 45%, rgba(0, 0, 0, 0.15) 100%);
     z-index: 0;
 }
 
-.hero-glow {
-    position: absolute;
-    top: -200px;
-    left: -200px;
-    width: 700px;
-    height: 700px;
-    background: radial-gradient(circle, rgba(255, 106, 0, 0.12) 0%, transparent 70%);
-    animation: glow-pulse 4s ease-in-out infinite;
-}
-
-@keyframes glow-pulse {
-
-    0%,
-    100% {
-        opacity: 0.6;
-        transform: scale(1);
-    }
-
-    50% {
-        opacity: 1;
-        transform: scale(1.05);
-    }
-}
-
 .hero-inner {
-    flex: 1;
-    display: flex;
-    align-items: flex-start;
-    gap: 80px;
-    padding-top: 0px;
-    padding-bottom: 60px;
     position: relative;
     z-index: 1;
+    padding-top: 60px;
+    padding-bottom: 60px;
+    display: flex;
+    justify-content: flex-start;
+    max-width: 100%;
+    margin-left: 0;
+    padding-left: 48px;
 }
 
 .hero-content {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    max-width: 560px;
-    padding-top: 30px;
+    gap: 20px;
+    width: 520px;
 }
 
-.hero-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255, 106, 0, 0.12);
-    border: 1px solid rgba(255, 106, 0, 0.3);
-    color: var(--accent);
-    padding: 6px 14px;
-    border-radius: var(--radius-full);
-    font-size: 0.8rem;
-    font-weight: 600;
+/* Hero animations */
+@keyframes hero-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hero-badge-season {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 4px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     width: fit-content;
+    animation: hero-fade-up 0.6s ease both;
+    animation-delay: 0.1s;
 }
 
-.hero-content h1 {
-    line-height: 1.05;
+.hero-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(2.8rem, 5.5vw, 4.2rem);
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    color: #fff;
+    animation: hero-fade-up 0.6s ease both;
+    animation-delay: 0.25s;
 }
 
 .hero-content p {
-    color: var(--text-secondary);
-    font-size: 1.05rem;
-    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 1rem;
+    line-height: 1.65;
+    animation: hero-fade-up 0.6s ease both;
+    animation-delay: 0.45s;
 }
 
 .hero-actions {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
-}
-
-/* Hero visual */
-.hero-visual {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Hero slideshow */
-.hero-slideshow {
-    position: relative;
-    width: 480px;
-    height: 480px;
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-}
-
-.hero-slide-img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    transition: opacity 0.7s ease;
-    border-radius: var(--radius-lg);
-}
-
-.hero-slide-img.active {
-    opacity: 1;
-}
-
-/* Dot navigation */
-.slide-dots {
-    position: absolute;
-    bottom: 14px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 8px;
-    z-index: 2;
-}
-
-.slide-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.35);
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    transition: background 0.3s, transform 0.3s;
-}
-
-.slide-dot.active {
-    background: var(--accent);
-    transform: scale(1.3);
+    animation: hero-fade-up 0.6s ease both;
+    animation-delay: 0.6s;
 }
 
 
@@ -315,8 +263,7 @@
 
 /* Brands */
 .brands-section {
-    background: var(--surface);
-    border-top: 1px solid var(--border);
+    background: linear-gradient(to bottom, #000 0%, transparent 25%), linear-gradient(to right, #1a0a02, #7a2e00, #e65c00);
     border-bottom: 1px solid var(--border);
 }
 
@@ -325,7 +272,6 @@
     grid-template-columns: repeat(8, 1fr);
     gap: 0;
     margin-top: 40px;
-    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
 }
@@ -336,28 +282,31 @@
     align-items: center;
     justify-content: center;
     transition: var(--transition);
-    background: #000;
-    position: relative;
+    background: #111;
     overflow: hidden;
-    padding: 15px;
+    padding: 0;
 }
 
 .brand-logo-item:hover {
-    border-color: var(--border-light);
-    transform: translateY(-2px);
+    background: #1a1a1a;
 }
 
 .brand-logo-item img {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
-    object-fit: contain;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     transition: all 0.4s ease;
 }
 
 .brand-logo-item:hover img {
-    transform: scale(1.08);
+    transform: scale(1.05);
+}
+
+/* LS2 y Michelin: logos con texto fino que se cortan con cover */
+.brand-logo-item:nth-child(1) img,
+.brand-logo-item:nth-child(4) img {
+    object-fit: contain;
+    padding: 12px;
 }
 
 /* Why grid */
@@ -417,10 +366,16 @@
 
 /* Social Section */
 .social-section {
+    position: relative;
     padding: 80px 0;
-    background: #000;
+    background: linear-gradient(to right, #1a0a02, #7a2e00, #e65c00);
     text-align: center;
     border-top: 1px solid var(--border);
+}
+
+.social-section .container {
+    position: relative;
+    z-index: 1;
 }
 
 .social-section h2 {
@@ -596,7 +551,7 @@
 
 @media (max-width: 640px) {
     .brands-logo-row {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 
@@ -612,14 +567,8 @@
 }
 
 @media (max-width: 768px) {
-    .hero-inner {
-        flex-direction: column;
-        padding-top: 0px;
-        gap: 40px;
-    }
-
-    .hero-visual {
-        display: none;
+    .hero-title {
+        font-size: 2rem;
     }
 
     .stats-inner {

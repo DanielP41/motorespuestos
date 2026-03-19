@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, CreditCard, Loader2, X, Save, Edit } from 'lucide-react';
 import { getClientes, crearCliente, actualizarCliente } from '../../services/api';
+import { Toast } from '../../components/UI';
 
 type Cliente = {
     id?: number;
@@ -40,6 +41,7 @@ export default function Clientes() {
     const [editing, setEditing] = useState<Cliente | null>(null);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState('');
+    const [toast, setToast] = useState('');
 
     const loadData = async (search?: string) => {
         setLoading(true);
@@ -81,6 +83,7 @@ export default function Clientes() {
                 await crearCliente(editing);
             }
             setShowModal(false);
+            setToast(editing.id ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente');
             loadData();
         } catch (err: any) {
             setSaveError(err.message || 'Error al guardar el cliente.');
@@ -262,6 +265,8 @@ export default function Clientes() {
                     </div>
                 </div>
             )}
+
+            {toast && <Toast message={toast} onClose={() => setToast('')} />}
 
             <style>{`
                 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }

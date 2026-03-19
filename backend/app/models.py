@@ -1,7 +1,9 @@
 from .database import Base
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import relationship
 import datetime
+
+estado_repuesto = Enum('activo', 'descontinuado', 'agotado', name='estado_repuesto', create_type=False)
 
 class User(Base):
     __tablename__ = "usuarios"
@@ -13,6 +15,9 @@ class User(Base):
     nombre_completo = Column(String)
     role = Column(String, default="vendedor") # admin, vendedor
     is_active = Column(Boolean, default=True)
+    token_invalidated_at = Column(DateTime, nullable=True)
+    password_reset_token = Column(String, nullable=True)
+    password_reset_expires = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -60,13 +65,16 @@ class Cliente(Base):
     documento_nro = Column(String, unique=True, index=True, nullable=False)
     nombre = Column(String, nullable=False)
     telefono = Column(String)
-    email = Column(String)
+    email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     direccion = Column(String)
     credito_habilitado = Column(Boolean, default=False)
-    limite_credito = Column(Float, default=0.0)
-    saldo_credito = Column(Float, default=0.0)
+    limite_credito = Column(Numeric(14, 2), default=0)
+    saldo_credito = Column(Numeric(14, 2), default=0)
     activo = Column(Boolean, default=True)
+    token_invalidated_at = Column(DateTime, nullable=True)
+    password_reset_token = Column(String, nullable=True)
+    password_reset_expires = Column(DateTime, nullable=True)
     creado_en = Column(DateTime, default=datetime.datetime.utcnow)
     actualizado_en = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
@@ -97,18 +105,32 @@ class Repuesto(Base):
     descripcion = Column(String)
     categoria_id = Column(Integer, ForeignKey("categoria.id"), nullable=False)
     unidad_medida_id = Column(Integer, ForeignKey("unidad_medida.id"))
-    precio_compra = Column(Float, default=0.0)
-    precio_venta = Column(Float, nullable=False)
-    precio_venta_min = Column(Float, default=0.0)
+    precio_compra = Column(Numeric(14, 2), default=0)
+    precio_venta = Column(Numeric(14, 2), nullable=False)
+    precio_venta_min = Column(Numeric(14, 2), default=0)
     stock_actual = Column(Integer, default=0)
     stock_minimo = Column(Integer, default=0)
     es_original = Column(Boolean, default=True)
-    estado = Column(String, default="activo")
+    estado = Column(estado_repuesto, default="activo")
     actualizado_en = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     creado_en = Column(DateTime, default=datetime.datetime.utcnow)
 
     categoria = relationship("Categoria")
     unidad_medida = relationship("UnidadMedida")
+    imagenes = relationship("RepuestoImagen", back_populates="repuesto", order_by="RepuestoImagen.orden", cascade="all, delete-orphan")
+
+
+class RepuestoImagen(Base):
+    __tablename__ = "repuesto_imagen"
+
+    id = Column(Integer, primary_key=True, index=True)
+    repuesto_id = Column(Integer, ForeignKey("repuesto.id", ondelete="CASCADE"), nullable=False)
+    url = Column(String, nullable=False)
+    orden = Column(Integer, default=0)
+    es_principal = Column(Boolean, default=False)
+    creado_en = Column(DateTime, default=datetime.datetime.utcnow)
+
+    repuesto = relationship("Repuesto", back_populates="imagenes")
 
 class MovimientoInventario(Base):
     __tablename__ = "movimiento_inventario"
@@ -118,7 +140,7 @@ class MovimientoInventario(Base):
     cantidad = Column(Integer, nullable=False)
     stock_anterior = Column(Integer, nullable=False)
     stock_posterior = Column(Integer, nullable=False)
-    costo_unitario = Column(Float)
+    costo_unitario = Column(Numeric(14, 2))
     referencia_id = Column(Integer)
     referencia_tipo = Column(String)
     usuario = Column(String)
@@ -135,13 +157,15 @@ class Venta(Base):
     fecha = Column(DateTime, default=datetime.datetime.utcnow)
     cliente_id = Column(Integer, ForeignKey("cliente.id"), nullable=True)
     cliente_moto_id = Column(Integer, ForeignKey("cliente_moto.id"), nullable=True)
-    subtotal = Column(Float, default=0.0)
-    descuento_total = Column(Float, default=0.0)
-    impuesto_pct = Column(Float, default=0.0)
-    impuesto_monto = Column(Float, default=0.0)
-    total = Column(Float, nullable=False)
+    subtotal = Column(Numeric(14, 2), default=0)
+    descuento_total = Column(Numeric(14, 2), default=0)
+    impuesto_pct = Column(Numeric(5, 2), default=0)
+    impuesto_monto = Column(Numeric(14, 2), default=0)
+    total = Column(Numeric(14, 2), nullable=False)
     metodo_pago = Column(String, nullable=False)
     estado = Column(String, default="pendiente")
+    mp_preference_id = Column(String, nullable=True)
+    mp_payment_id = Column(String, nullable=True)
     notas = Column(String)
     usuario = Column(String)
     actualizado_en = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
@@ -157,10 +181,11 @@ class ItemVenta(Base):
     venta_id = Column(Integer, ForeignKey("venta.id"), nullable=False)
     repuesto_id = Column(Integer, ForeignKey("repuesto.id"), nullable=False)
     cantidad = Column(Integer, nullable=False)
-    precio_unitario = Column(Float, nullable=False)
-    descuento_pct = Column(Float, default=0.0)
-    subtotal = Column(Float, nullable=False)
-    costo_unitario = Column(Float)
+    precio_unitario = Column(Numeric(14, 2), nullable=False)
+    descuento_pct = Column(Numeric(5, 2), default=0)
+    subtotal = Column(Numeric(14, 2), nullable=False)
+    costo_unitario = Column(Numeric(14, 2))
+    creado_en = Column(DateTime, default=datetime.datetime.utcnow)
 
     venta = relationship("Venta", back_populates="items")
     repuesto = relationship("Repuesto")

@@ -1,12 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
 class ItemVentaBase(BaseModel):
     repuesto_id: int
-    cantidad: int
-    precio_unitario: float
-    descuento_pct: float = 0.0
+    cantidad: int = Field(..., gt=0)
+    precio_unitario: float = Field(..., ge=0)
+    descuento_pct: float = Field(default=0.0, ge=0, le=100)
 
 class ItemVentaCreate(ItemVentaBase):
     pass

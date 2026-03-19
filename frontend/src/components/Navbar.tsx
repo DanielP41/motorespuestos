@@ -72,6 +72,9 @@ export default function Navbar() {
                                         <p className="user-role">{user?.role === 'cliente' ? 'Cliente' : 'Staff'}</p>
                                     </div>
                                     <div className="user-dropdown-divider"></div>
+                                    {user?.role === 'cliente' && (
+                                        <Link to="/mi-cuenta" className="user-dropdown-item" onClick={() => setUserMenuOpen(false)}>Mi cuenta</Link>
+                                    )}
                                     {user?.role !== 'cliente' && (
                                         <Link to="/admin" className="user-dropdown-item" onClick={() => setUserMenuOpen(false)}>Panel Admin</Link>
                                     )}

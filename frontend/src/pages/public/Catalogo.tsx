@@ -1,8 +1,7 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, X, ShoppingCart, Check, Loader2 } from 'lucide-react';
-import { getRepuestos } from '../../services/api';
-import { mockCategorias, mockMarcas } from '../../data/mockData';
+import { getRepuestos, getCategoriasRaiz, getMarcas } from '../../services/api';
 import { useCart } from '../../context/CartContext';
 import { Repuesto } from '../../types/types';
 import './Catalogo.css';
@@ -15,13 +14,18 @@ export default function Catalogo() {
     const [products, setProducts] = useState<Repuesto[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [categorias, setCategorias] = useState<any[]>([]);
+    const [marcas, setMarcas] = useState<any[]>([]);
 
     const q = params.get('q') ?? '';
     const catSlug = params.get('categoria') ?? '';
     const marcaId = params.get('marca') ? Number(params.get('marca')) : 0;
     const soloOriginales = params.get('original') === '1';
 
-    const rootCats = useMemo(() => mockCategorias.filter(c => !c.padre_id), []);
+    useEffect(() => {
+        getCategoriasRaiz().then(setCategorias).catch(() => {});
+        getMarcas().then(setMarcas).catch(() => {});
+    }, []);
 
     useEffect(() => {
         async function loadData() {
@@ -30,24 +34,11 @@ export default function Catalogo() {
                 // Map frontend filter naming to backend expected params
                 // Note: getRepuestos in api.ts handles basic filtering
                 const data = await getRepuestos({
-                    categoria: catSlug,
-                    marca: marcaId || undefined
+                    categoria: catSlug || undefined,
+                    es_original: soloOriginales || undefined,
+                    search: q || undefined,
                 });
-
-                // Further filter on client side for 'q' and 'soloOriginales' if backend doesn't handle them yet
-                let filtered = data;
-                if (q) {
-                    const lowerQ = q.toLowerCase();
-                    filtered = filtered.filter(r =>
-                        r.nombre.toLowerCase().includes(lowerQ) ||
-                        r.sku.toLowerCase().includes(lowerQ)
-                    );
-                }
-                if (soloOriginales) {
-                    filtered = filtered.filter(r => r.es_original);
-                }
-
-                setProducts(filtered);
+                setProducts(data);
             } catch (err) {
                 console.error('Error loading products:', err);
                 setError('No se pudieron cargar los repuestos. Verificá tu conexión.');
@@ -126,7 +117,7 @@ export default function Catalogo() {
                                         className={`filter-chip ${!catSlug ? 'active' : ''}`}
                                         onClick={() => setParam('categoria', '')}
                                     >Todas</button>
-                                    {rootCats.map(c => (
+                                    {categorias.map(c => (
                                         <button
                                             key={c.id}
                                             className={`filter-chip ${catSlug === c.slug ? 'active' : ''}`}
@@ -144,7 +135,7 @@ export default function Catalogo() {
                                         className={`filter-chip ${!marcaId ? 'active' : ''}`}
                                         onClick={() => setParam('marca', '')}
                                     >Todas</button>
-                                    {mockMarcas.map(m => (
+                                    {marcas.map(m => (
                                         <button
                                             key={m.id}
                                             className={`filter-chip ${marcaId === m.id ? 'active' : ''}`}
@@ -228,7 +219,7 @@ function ProductCard({ rep, addItem, inCart }: { rep: Repuesto; addItem: (r: Rep
                 {rep.stock_actual === 0 && <div className="pcat-out-overlay">Agotado</div>}
             </div>
             <div className="pcat-info">
-                <span className="pcat-cat">{rep.categoria || 'Repuesto'}</span>
+                <span className="pcat-cat">{typeof rep.categoria === 'object' ? rep.categoria?.nombre : (rep.categoria || 'Repuesto')}</span>
                 <p className="pcat-sku">SKU: {rep.sku}</p>
                 <h4 className="pcat-name">{rep.nombre}</h4>
                 <div className="pcat-footer">

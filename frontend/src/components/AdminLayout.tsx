@@ -23,16 +23,12 @@ export default function AdminLayout() {
         <div className="admin-shell">
             {/* Sidebar */}
             <aside className={`admin-sidebar ${collapsed ? 'collapsed' : ''}`}>
-                <div
-                    className="sidebar-header"
-                    style={!collapsed ? { height: '160px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' } : {}}
-                >
+                <div className="sidebar-header">
                     <Link to="/admin" className="sidebar-logo">
                         <img
                             src="/logo_xl.png?v=3"
                             alt="3M Motos"
                             className="sidebar-logo-img"
-                            style={!collapsed ? { height: '120px', width: 'auto', objectFit: 'contain', display: 'block' } : {}}
                         />
                     </Link>
                     <button
@@ -72,9 +68,7 @@ export default function AdminLayout() {
             <div className="admin-main">
                 {/* Top bar */}
                 <header className="admin-topbar">
-                    <div className="topbar-left">
-                        <span className="topbar-greeting">Panel de administración</span>
-                    </div>
+                    <div className="topbar-left"></div>
                     <div className="topbar-right">
                         <button className="btn btn-icon topbar-btn" aria-label="Notificaciones">
                             <Bell size={18} />

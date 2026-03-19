@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { Search, Plus, Edit, AlertTriangle, Loader2, X, Save } from 'lucide-react';
-import { getRepuestos, crearRepuesto, actualizarRepuesto } from '../../services/api';
+import { getRepuestos, crearRepuesto, actualizarRepuesto, getCategoriasRaiz, getMarcas } from '../../services/api';
 import { Repuesto } from '../../types/types';
 import ImageUpload from '../../components/common/ImageUpload';
+import { Toast } from '../../components/UI';
 
 function getStockClass(r: Repuesto) {
     if (r.stock_actual === 0) return 'badge-danger';
@@ -18,16 +20,28 @@ function getStockLabel(r: Repuesto) {
 
 export default function Repuestos() {
     const [q, setQ] = useState('');
+    const debouncedQ = useDebounce(q, 350);
     const [repuestos, setRepuestos] = useState<Repuesto[]>([]);
+    const [categorias, setCategorias] = useState<{ id: number; nombre: string }[]>([]);
+    const [marcas, setMarcas] = useState<{ id: number; nombre: string }[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
+    const [toast, setToast] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingRepuesto, setEditingRepuesto] = useState<Partial<Repuesto> | null>(null);
 
-    const loadData = async () => {
+    const loadData = async (search?: string) => {
         setLoading(true);
         try {
-            const data = await getRepuestos();
+            const [data, cats, marcasList] = await Promise.all([
+                getRepuestos(search ? { search } : {}),
+                getCategoriasRaiz(),
+                getMarcas(),
+            ]);
             setRepuestos(data);
+            setCategorias(cats);
+            setMarcas(marcasList);
         } catch (err) {
             console.error('Error loading repuestos:', err);
         } finally {
@@ -36,8 +50,8 @@ export default function Repuestos() {
     };
 
     useEffect(() => {
-        loadData();
-    }, []);
+        loadData(debouncedQ || undefined);
+    }, [debouncedQ]);
 
     const handleOpenModal = (rep?: Repuesto) => {
         setEditingRepuesto(rep || {
@@ -45,44 +59,38 @@ export default function Repuestos() {
             sku: '',
             precio_venta: 0,
             stock_actual: 0,
-            categoria_id: 1,
+            categoria_id: categorias[0]?.id,
+            marca_id: marcas[0]?.id as any,
             es_original: true,
             imagen_url: ''
-        });
+        } as Partial<Repuesto>);
+        setSaveError('');
         setShowModal(true);
     };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingRepuesto) return;
+        setSaving(true);
+        setSaveError('');
 
         try {
-            const payload = {
-                ...editingRepuesto,
-                codigo: editingRepuesto.sku,
-                precio: editingRepuesto.precio_venta,
-                stock: editingRepuesto.stock_actual,
-                categoria_id: 1,
-                marca_id: 1      // Placeholder
-            };
-
             if (editingRepuesto.id) {
-                await actualizarRepuesto(editingRepuesto.id, payload);
+                await actualizarRepuesto(editingRepuesto.id, editingRepuesto);
             } else {
-                await crearRepuesto(payload);
+                await crearRepuesto(editingRepuesto);
             }
             setShowModal(false);
+            setToast(editingRepuesto.id ? 'Repuesto actualizado correctamente' : 'Repuesto creado correctamente');
             loadData();
-        } catch (err) {
-            console.error('Error saving repuesto:', err);
-            alert('Error al guardar el producto.');
+        } catch (err: any) {
+            setSaveError(err.message || 'Error al guardar el producto.');
+        } finally {
+            setSaving(false);
         }
     };
 
-    const results = repuestos.filter(r =>
-        r.nombre.toLowerCase().includes(q.toLowerCase()) ||
-        r.sku.toLowerCase().includes(q.toLowerCase())
-    );
+    const results = repuestos;
 
     return (
         <div>
@@ -188,6 +196,36 @@ export default function Repuestos() {
 
                             <div className="grid-2">
                                 <div className="form-group">
+                                    <label className="form-label">Categoría</label>
+                                    <select
+                                        className="form-control"
+                                        required
+                                        value={editingRepuesto.categoria_id || ''}
+                                        onChange={e => setEditingRepuesto({ ...editingRepuesto, categoria_id: Number(e.target.value) })}
+                                    >
+                                        <option value="">Seleccionar...</option>
+                                        {categorias.map(c => (
+                                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Marca</label>
+                                    <select
+                                        className="form-control"
+                                        value={editingRepuesto.marca_id || ''}
+                                        onChange={e => setEditingRepuesto({ ...editingRepuesto, marca_id: Number(e.target.value) })}
+                                    >
+                                        <option value="">Sin marca</option>
+                                        {marcas.map(m => (
+                                            <option key={m.id} value={m.id}>{m.nombre}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid-2">
+                                <div className="form-group">
                                     <label className="form-label">Precio de Venta</label>
                                     <input
                                         type="number"
@@ -209,21 +247,29 @@ export default function Repuestos() {
                                 </div>
                             </div>
 
-                            <ImageUpload
-                                value={editingRepuesto.imagen_url || ''}
-                                onChange={(url) => setEditingRepuesto({ ...editingRepuesto, imagen_url: url })}
-                            />
+                            <div style={{ marginTop: 20 }}>
+                                <label className="form-label" style={{ marginBottom: 10, display: 'block' }}>Imagen del Producto</label>
+                                <ImageUpload
+                                    value={editingRepuesto.imagen_url || ''}
+                                    onChange={(url) => setEditingRepuesto({ ...editingRepuesto, imagen_url: url })}
+                                />
+                            </div>
 
-                            <div className="modal-footer">
+                            {saveError && <div className="alert alert-danger" style={{ marginTop: 20, marginBottom: 0 }}>{saveError}</div>}
+                            
+                            <div className="modal-footer" style={{ marginTop: 20 }}>
                                 <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary">
-                                    <Save size={16} /> Guardar cambios
+                                <button type="submit" className="btn btn-primary" disabled={saving}>
+                                    {saving ? <Loader2 className="spinner" size={16} /> : <Save size={16} />}
+                                    {' '}{saving ? 'Guardando...' : 'Guardar cambios'}
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
+
+            {toast && <Toast message={toast} onClose={() => setToast('')} />}
 
             <style>{`
                 .modal-overlay {

@@ -1,10 +1,24 @@
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle, ShoppingBag, ArrowRight } from 'lucide-react';
 import './PedidoExitoso.css';
 
 export default function PedidoExitoso() {
     const location = useLocation();
-    const { numeroPedido, total, metodo } = (location.state as any) || {};
+    const [searchParams] = useSearchParams();
+
+    // Flujo estándar (efectivo, transferencia): datos vienen en location.state
+    const stateData = (location.state as any) || {};
+
+    // Flujo MercadoPago: datos vienen como query params del redirect de MP
+    const paymentId = searchParams.get('payment_id');
+    const externalRef = searchParams.get('external_reference'); // es el venta_id
+    const mpStatus = searchParams.get('status');
+
+    const esMercadoPago = !!paymentId;
+
+    const numeroPedido = stateData.numeroPedido ?? (externalRef ? `#${externalRef}` : null);
+    const total = stateData.total ?? null;
+    const metodo = stateData.metodo ?? (esMercadoPago ? 'mercadopago' : null);
 
     return (
         <div className="pedido-exitoso-page">
@@ -14,15 +28,26 @@ export default function PedidoExitoso() {
                 </div>
                 <h1>¡Pedido confirmado!</h1>
                 <p className="pedido-subtitle">
-                    Tu pedido ha sido registrado exitosamente. Nos comunicaremos con vos pronto para coordinar la entrega.
+                    {esMercadoPago
+                        ? 'Tu pago fue procesado. Nos comunicaremos con vos para coordinar la entrega.'
+                        : 'Tu pedido fue registrado. Nos comunicaremos con vos para coordinar la entrega.'
+                    }
                 </p>
 
-                {numeroPedido && (
+                {(numeroPedido || paymentId) && (
                     <div className="pedido-info-box">
-                        <div className="pedido-info-row">
-                            <span>N° de pedido</span>
-                            <span className="pedido-numero">{numeroPedido}</span>
-                        </div>
+                        {numeroPedido && (
+                            <div className="pedido-info-row">
+                                <span>N° de pedido</span>
+                                <span className="pedido-numero">{numeroPedido}</span>
+                            </div>
+                        )}
+                        {paymentId && (
+                            <div className="pedido-info-row">
+                                <span>N° de pago MP</span>
+                                <span className="pedido-numero">{paymentId}</span>
+                            </div>
+                        )}
                         {total && (
                             <div className="pedido-info-row">
                                 <span>Total</span>

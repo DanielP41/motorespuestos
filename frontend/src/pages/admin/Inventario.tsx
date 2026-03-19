@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { getMovimientos, getRepuestos, registrarMovimiento, getStockCritico } from '../../services/api';
 import {
     ArrowUp, ArrowDown, RefreshCw, Loader2, Plus, X, Save,
-    Search, AlertTriangle, PackageX, Package
+    Search, AlertTriangle, PackageX, Package, ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
+import { Toast } from '../../components/UI';
+import { exportToCSV } from '../../utils/export';
 
 const TIPOS_MOV = [
     { value: 'entrada', label: 'Entrada', desc: 'Mercancía recibida (suma al stock)', color: '#22c55e', icon: <ArrowUp size={14} /> },
@@ -26,6 +29,25 @@ const tipoIcon: Record<string, JSX.Element> = {
 };
 
 type FiltroTipo = 'todos' | 'entrada' | 'salida' | 'ajuste' | 'devolucion';
+type FiltroPeriodo = 'todos' | 'hoy' | 'semana' | 'mes' | 'custom';
+
+function toISODate(d: Date) {
+    return d.toISOString().split('T')[0];
+}
+
+function rangoDesde(periodo: FiltroPeriodo): { desde?: string; hasta?: string } {
+    const hoy = new Date();
+    if (periodo === 'hoy') return { desde: toISODate(hoy), hasta: toISODate(hoy) };
+    if (periodo === 'semana') {
+        const d = new Date(hoy); d.setDate(hoy.getDate() - 6);
+        return { desde: toISODate(d), hasta: toISODate(hoy) };
+    }
+    if (periodo === 'mes') {
+        const d = new Date(hoy); d.setDate(hoy.getDate() - 29);
+        return { desde: toISODate(d), hasta: toISODate(hoy) };
+    }
+    return {};
+}
 
 export default function Inventario() {
     const [movimientos, setMovimientos] = useState<any[]>([]);
@@ -33,6 +55,19 @@ export default function Inventario() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('todos');
+    const [filtroPeriodo, setFiltroPeriodo] = useState<FiltroPeriodo>('todos');
+    const [customDesde, setCustomDesde] = useState('');
+    const [customHasta, setCustomHasta] = useState('');
+    const [page, setPage] = useState(0);
+    const [toast, setToast] = useState('');
+
+    // Filtro por producto (tabla)
+    const [filtroRepuesto, setFiltroRepuesto] = useState<any | null>(null);
+    const [tableSearch, setTableSearch] = useState('');
+    const [tableSearchResults, setTableSearchResults] = useState<any[]>([]);
+    const [tableSearchLoading, setTableSearchLoading] = useState(false);
+    const [showTableDrop, setShowTableDrop] = useState(false);
+    const debouncedTableSearch = useDebounce(tableSearch, 300);
 
     // Modal state
     const [showModal, setShowModal] = useState(false);
@@ -40,21 +75,67 @@ export default function Inventario() {
     const [saveError, setSaveError] = useState('');
 
     // Form
-    const [repuestosAll, setRepuestosAll] = useState<any[]>([]);
     const [searchProd, setSearchProd] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
     const [showDrop, setShowDrop] = useState(false);
     const [selectedRep, setSelectedRep] = useState<any | null>(null);
+    const debouncedSearch = useDebounce(searchProd, 300);
+    const dropdownRef = useRef<HTMLDivElement>(null);
     const [tipo, setTipo] = useState('entrada');
     const [cantidad, setCantidad] = useState<number>(1);
     const [costo, setCosto] = useState<number | ''>('');
     const [notas, setNotas] = useState('');
 
-    const loadData = useCallback(async (t: FiltroTipo = filtroTipo) => {
+    // Búsqueda lazy para el filtro de tabla
+    useEffect(() => {
+        if (filtroRepuesto || debouncedTableSearch.length < 2) {
+            setTableSearchResults([]);
+            return;
+        }
+        setTableSearchLoading(true);
+        getRepuestos({ search: debouncedTableSearch })
+            .then(r => setTableSearchResults(r.slice(0, 8)))
+            .catch(() => setTableSearchResults([]))
+            .finally(() => setTableSearchLoading(false));
+    }, [debouncedTableSearch, filtroRepuesto]);
+
+    // Búsqueda lazy para el modal
+    useEffect(() => {
+        if (selectedRep || debouncedSearch.length < 2) {
+            setSearchResults([]);
+            return;
+        }
+        setSearchLoading(true);
+        getRepuestos({ search: debouncedSearch })
+            .then(r => setSearchResults(r.slice(0, 8)))
+            .catch(() => setSearchResults([]))
+            .finally(() => setSearchLoading(false));
+    }, [debouncedSearch, selectedRep]);
+
+    const loadData = useCallback(async (
+        t: FiltroTipo = filtroTipo,
+        p: number = page,
+        periodo: FiltroPeriodo = filtroPeriodo,
+        cDesde: string = customDesde,
+        cHasta: string = customHasta,
+        repId?: number,
+    ) => {
         setLoading(true);
         setError('');
         try {
+            const rango = periodo === 'custom'
+                ? { desde: cDesde || undefined, hasta: cHasta || undefined }
+                : rangoDesde(periodo);
+            const filters = {
+                ...(t !== 'todos' ? { tipo: t } : {}),
+                page: p,
+                ...(rango.desde ? { fecha_desde: rango.desde } : {}),
+                ...(rango.hasta ? { fecha_hasta: rango.hasta } : {}),
+                ...(repId ? { repuesto_id: repId } : {}),
+            };
             const [movs, critico] = await Promise.all([
-                getMovimientos(t !== 'todos' ? { tipo: t } : {}),
+                getMovimientos(filters),
                 getStockCritico(),
             ]);
             setMovimientos(movs);
@@ -64,31 +145,23 @@ export default function Inventario() {
         } finally {
             setLoading(false);
         }
-    }, [filtroTipo]);
+    }, [filtroTipo, page, filtroPeriodo, customDesde, customHasta]);
 
-    useEffect(() => { loadData(filtroTipo); }, [filtroTipo]);
+    useEffect(() => {
+        loadData(filtroTipo, page, filtroPeriodo, customDesde, customHasta, filtroRepuesto?.id);
+    }, [filtroTipo, page, filtroPeriodo, filtroRepuesto]);
 
-    const openModal = async () => {
+    const openModal = () => {
         setSelectedRep(null);
         setSearchProd('');
+        setSearchResults([]);
         setTipo('entrada');
         setCantidad(1);
         setCosto('');
         setNotas('');
         setSaveError('');
         setShowModal(true);
-        try {
-            const reps = await getRepuestos();
-            setRepuestosAll(reps);
-        } catch { /* ignore */ }
     };
-
-    const filteredProds = searchProd.length >= 2
-        ? repuestosAll.filter(r =>
-            r.nombre.toLowerCase().includes(searchProd.toLowerCase()) ||
-            r.sku.toLowerCase().includes(searchProd.toLowerCase())
-        ).slice(0, 8)
-        : [];
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -106,12 +179,31 @@ export default function Inventario() {
                 notas,
             });
             setShowModal(false);
-            loadData(filtroTipo);
+            setToast('Movimiento registrado correctamente');
+            setPage(0);
+            loadData(filtroTipo, 0);
         } catch (err: any) {
             setSaveError(err.message || 'Error al registrar movimiento.');
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleExport = () => {
+        const rows = movimientos.map(m => ({
+            'Fecha': new Date(m.creado_en).toLocaleString('es-CO'),
+            'Tipo': m.tipo,
+            'Producto': m.repuesto ? (typeof m.repuesto === 'object' ? m.repuesto.nombre : m.repuesto) : `#${m.repuesto_id}`,
+            'Cantidad': m.cantidad,
+            'Stock anterior': m.stock_anterior,
+            'Stock posterior': m.stock_posterior,
+            'Costo unitario': m.costo_unitario ?? '',
+            'Referencia': m.referencia_tipo ? `${m.referencia_tipo}${m.referencia_id ? ` #${m.referencia_id}` : ''}` : '',
+            'Usuario': m.usuario ?? '',
+            'Notas': m.notas ?? '',
+        }));
+        const fecha = new Date().toISOString().split('T')[0];
+        exportToCSV(rows, `inventario_${fecha}.csv`);
     };
 
     const agotados = stockCritico.filter(r => r.stock_actual === 0).length;
@@ -134,6 +226,14 @@ export default function Inventario() {
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-ghost btn-sm" onClick={() => loadData(filtroTipo)} disabled={loading}>
                         <RefreshCw size={14} />
+                    </button>
+                    <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={handleExport}
+                        disabled={loading || movimientos.length === 0}
+                        title="Exportar a CSV"
+                    >
+                        <Download size={14} /> CSV
                     </button>
                     <button className="btn btn-primary" onClick={openModal}>
                         <Plus size={16} /> Registrar movimiento
@@ -184,13 +284,105 @@ export default function Inventario() {
                 </div>
             )}
 
+            {/* Filtro por producto */}
+            <div style={{ position: 'relative', maxWidth: 360, marginBottom: 12 }}>
+                <div className="input-icon-wrapper">
+                    <Search size={14} />
+                    <input
+                        className="form-control"
+                        placeholder="Filtrar por producto o SKU..."
+                        value={filtroRepuesto ? `${filtroRepuesto.nombre} (${filtroRepuesto.sku})` : tableSearch}
+                        onChange={e => {
+                            if (filtroRepuesto) setFiltroRepuesto(null);
+                            setTableSearch(e.target.value);
+                            setShowTableDrop(true);
+                        }}
+                        onFocus={() => !filtroRepuesto && setShowTableDrop(true)}
+                        onBlur={() => setTimeout(() => setShowTableDrop(false), 150)}
+                        autoComplete="off"
+                    />
+                    {filtroRepuesto && (
+                        <button
+                            type="button"
+                            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}
+                            onClick={() => { setFiltroRepuesto(null); setTableSearch(''); setPage(0); }}
+                        ><X size={14} /></button>
+                    )}
+                </div>
+                {showTableDrop && !filtroRepuesto && (tableSearchLoading || tableSearchResults.length > 0) && (
+                    <div className="dropdown-list" style={{ position: 'absolute', zIndex: 50, width: '100%' }}>
+                        {tableSearchLoading ? (
+                            <div className="dropdown-item" style={{ color: 'var(--muted)', justifyContent: 'center' }}>
+                                <Loader2 size={14} className="spinner" /> Buscando...
+                            </div>
+                        ) : tableSearchResults.map(r => (
+                            <div key={r.id} className="dropdown-item"
+                                onClick={() => { setFiltroRepuesto(r); setShowTableDrop(false); setTableSearch(''); setPage(0); }}>
+                                <span style={{ fontWeight: 600 }}>{r.nombre}</span>
+                                <span style={{ color: 'var(--muted)', fontSize: '0.78rem', marginLeft: 8 }}>
+                                    {r.sku} · Stock: {r.stock_actual}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Filtros por período */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                {([
+                    { value: 'todos', label: 'Todos' },
+                    { value: 'hoy', label: 'Hoy' },
+                    { value: 'semana', label: 'Últimos 7d' },
+                    { value: 'mes', label: 'Últimos 30d' },
+                    { value: 'custom', label: 'Personalizado' },
+                ] as { value: FiltroPeriodo; label: string }[]).map(f => (
+                    <button
+                        key={f.value}
+                        className={`btn btn-sm ${filtroPeriodo === f.value ? 'btn-primary' : 'btn-ghost'}`}
+                        onClick={() => { setFiltroPeriodo(f.value); setPage(0); }}
+                        disabled={loading}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Rango personalizado */}
+            {filtroPeriodo === 'custom' && (
+                <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                        type="date"
+                        className="form-control"
+                        style={{ width: 160 }}
+                        value={customDesde}
+                        onChange={e => setCustomDesde(e.target.value)}
+                    />
+                    <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>hasta</span>
+                    <input
+                        type="date"
+                        className="form-control"
+                        style={{ width: 160 }}
+                        value={customHasta}
+                        onChange={e => setCustomHasta(e.target.value)}
+                    />
+                    <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => { setPage(0); loadData(filtroTipo, 0, 'custom', customDesde, customHasta); }}
+                        disabled={loading || (!customDesde && !customHasta)}
+                    >
+                        Buscar
+                    </button>
+                </div>
+            )}
+
             {/* Filtros por tipo */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
                 {(['todos', 'entrada', 'salida', 'ajuste', 'devolucion'] as FiltroTipo[]).map(f => (
                     <button
                         key={f}
                         className={`btn btn-sm ${filtroTipo === f ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => setFiltroTipo(f)}
+                        onClick={() => { setFiltroTipo(f); setPage(0); }}
                         disabled={loading}
                         style={filtroTipo !== f && f !== 'todos' ? { color: tipoColor[f], borderColor: `${tipoColor[f]}44` } : {}}
                     >
@@ -239,7 +431,7 @@ export default function Inventario() {
                                         </span>
                                     </td>
                                     <td style={{ fontWeight: 500, fontSize: '0.85rem' }}>
-                                        {m.repuesto?.nombre ?? `#${m.repuesto_id}`}
+                                        {m.repuesto ? (typeof m.repuesto === 'object' ? (m.repuesto as any).nombre : m.repuesto) : `#${m.repuesto_id}`}
                                     </td>
                                     <td style={{ fontWeight: 700, color: m.cantidad > 0 ? '#22c55e' : '#ef4444' }}>
                                         {m.cantidad > 0 ? `+${m.cantidad}` : m.cantidad}
@@ -267,6 +459,19 @@ export default function Inventario() {
                     </table>
                 </div>
             )}
+
+            {/* Paginación */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 16 }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0 || loading}>
+                    <ChevronLeft size={16} />
+                </button>
+                <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>Página {page + 1}</span>
+                <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => p + 1)} disabled={movimientos.length < 50 || loading}>
+                    <ChevronRight size={16} />
+                </button>
+            </div>
+
+            {toast && <Toast message={toast} onClose={() => setToast('')} />}
 
             {/* ── Modal Registrar Movimiento ── */}
             {showModal && (
@@ -346,9 +551,13 @@ export default function Inventario() {
                                                 ><X size={14} /></button>
                                             )}
                                         </div>
-                                        {showDrop && !selectedRep && filteredProds.length > 0 && (
-                                            <div className="dropdown-list" style={{ position: 'absolute', zIndex: 100, width: '100%' }}>
-                                                {filteredProds.map(r => (
+                                        {showDrop && !selectedRep && (searchLoading || searchResults.length > 0) && (
+                                            <div ref={dropdownRef} className="dropdown-list" style={{ position: 'absolute', zIndex: 100, width: '100%' }}>
+                                                {searchLoading ? (
+                                                    <div className="dropdown-item" style={{ color: 'var(--muted)', justifyContent: 'center' }}>
+                                                        <Loader2 size={14} className="spinner" /> Buscando...
+                                                    </div>
+                                                ) : searchResults.map(r => (
                                                     <div key={r.id} className="dropdown-item"
                                                         onClick={() => { setSelectedRep(r); setShowDrop(false); setSearchProd(''); }}>
                                                         <span style={{ fontWeight: 600 }}>{r.nombre}</span>

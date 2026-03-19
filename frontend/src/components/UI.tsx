@@ -1,4 +1,5 @@
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { useEffect } from 'react';
+import { AlertTriangle, RefreshCw, X, CheckCircle } from 'lucide-react';
 
 // ── Loading Spinner ───────────────────────────────────────────────────────────
 interface SpinnerProps { size?: number; className?: string; }
@@ -88,6 +89,41 @@ export function EmptyState({ icon = '📭', title, description, action }: EmptyS
             <h3>{title}</h3>
             {description && <p className="text-muted">{description}</p>}
             {action}
+        </div>
+    );
+}
+
+// ── Toast notification ────────────────────────────────────────────────────────
+interface ToastProps {
+    message: string;
+    type?: 'success' | 'error';
+    onClose: () => void;
+}
+
+export function Toast({ message, type = 'success', onClose }: ToastProps) {
+    useEffect(() => {
+        const t = setTimeout(onClose, 3000);
+        return () => clearTimeout(t);
+    }, [onClose]);
+
+    const color = type === 'success' ? '#22c55e' : '#ef4444';
+    const bg = type === 'success' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+    const border = type === 'success' ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)';
+
+    return (
+        <div style={{
+            position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
+            background: bg, border: `1px solid ${border}`,
+            borderRadius: 'var(--radius)', padding: '12px 18px',
+            display: 'flex', alignItems: 'center', gap: 10,
+            backdropFilter: 'blur(8px)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+        }}>
+            <CheckCircle size={16} color={color} />
+            <span style={{ color: 'var(--text)', fontWeight: 500, fontSize: '0.9rem' }}>{message}</span>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: 0, marginLeft: 4 }}>
+                <X size={14} />
+            </button>
         </div>
     );
 }

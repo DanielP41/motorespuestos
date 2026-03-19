@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { CartItem, Repuesto } from '../types/types';
+
+const CART_KEY = 'moto_cart';
 
 interface CartContextType {
     items: CartItem[];
@@ -16,7 +18,18 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-    const [items, setItems] = useState<CartItem[]>([]);
+    const [items, setItems] = useState<CartItem[]>(() => {
+        try {
+            const stored = localStorage.getItem(CART_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem(CART_KEY, JSON.stringify(items));
+    }, [items]);
 
     const count = items.reduce((sum, item) => sum + item.cantidad, 0);
     const total = items.reduce((sum, item) => sum + item.repuesto.precio_venta * item.cantidad, 0);

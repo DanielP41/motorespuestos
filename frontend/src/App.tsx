@@ -17,8 +17,13 @@ import PedidoExitoso from './pages/public/PedidoExitoso';
 import Contacto from './pages/public/Contacto';
 import Login from './pages/public/Login';
 import Registro from './pages/public/Registro';
+import MiCuenta from './pages/public/MiCuenta';
 import Terminos from './pages/public/Terminos';
 import Privacidad from './pages/public/Privacidad';
+import RecuperarPassword from './pages/public/RecuperarPassword';
+import ResetPassword from './pages/public/ResetPassword';
+import PedidoFallido from './pages/public/PedidoFallido';
+import PedidoPendiente from './pages/public/PedidoPendiente';
 
 // Admin pages
 import Dashboard from './pages/admin/Dashboard';
@@ -59,6 +64,15 @@ export default function App() {
                             <Route path="/privacidad" element={<Privacidad />} />
                             <Route path="/login" element={<Login />} />
                             <Route path="/registro" element={<Registro />} />
+                            <Route path="/recuperar-password" element={<RecuperarPassword />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
+                            <Route path="/pedido-fallido" element={<PedidoFallido />} />
+                            <Route path="/pedido-pendiente" element={<PedidoPendiente />} />
+                            <Route path="/mi-cuenta" element={
+                                <RequireAuth role="cliente">
+                                    <MiCuenta />
+                                </RequireAuth>
+                            } />
                         </Route>
 
                         {/* Admin routes — protected */}

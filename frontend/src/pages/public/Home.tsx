@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Zap, Shield, Truck, Star, ChevronRight } from 'lucide-react';
+import { ArrowRight, Zap, Shield, Star } from 'lucide-react';
 import { getCategoriasRaiz, getMarcas, getRepuestosFeatured } from '../../services/api';
 import { useAsync } from '../../hooks/useAsync';
 import { SkeletonCard } from '../../components/UI';
 import { formatCOP } from '../../utils/helpers';
-import heroHelmet from '../../assets/hero-helmet.jpg';
 import brandLS2 from '../../assets/brands/ls2.jpg';
 import brandOnguard from '../../assets/brands/onguard.jpg';
 import brandRiffel from '../../assets/brands/riffel.jpg';
@@ -30,10 +29,8 @@ import catElectrico from '../../assets/categories/electrico.png';
 import catCarroceria from '../../assets/categories/carroceria.png';
 import catLubricantes from '../../assets/categories/lubricantes.png';
 import catAccesorios from '../../assets/categories/accesorios.png';
-import slide2 from '../../assets/slides/slide2.png';
-import slide3 from '../../assets/slides/slide3.png';
-import slide4 from '../../assets/slides/slide4.png';
-import slide5 from '../../assets/slides/slide5.png';
+// TODO: agregar foto de moto en src/assets/hero-moto.jpg para el fondo del hero
+// import heroMoto from '../../assets/hero-moto.jpg';
 import './Home.css';
 
 const catImages: Record<string, string> = {
@@ -46,14 +43,6 @@ const catImages: Record<string, string> = {
     'lubricantes-fluidos': catLubricantes,
     accesorios: catAccesorios,
 };
-
-const heroSlides = [
-    { src: heroHelmet, alt: 'Casco de moto' },
-    { src: slide2, alt: 'Guantes de moto' },
-    { src: slide3, alt: 'Chaqueta de moto' },
-    { src: slide4, alt: 'Botas de moto' },
-    { src: slide5, alt: 'Gafas de moto' },
-];
 
 const ANNOUNCEMENTS = [
     "🚚 ENVIO GRATIS | SUPERANDO $240.000",
@@ -95,14 +84,6 @@ export default function Home() {
     const { data: rootCats } = useAsync(getCategoriasRaiz);
     const { data: marcas } = useAsync(getMarcas);
     const { data: featured, isLoading: featuredLoading } = useAsync(getRepuestosFeatured);
-    const [slideIdx, setSlideIdx] = useState(0);
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setSlideIdx(i => (i + 1) % heroSlides.length);
-        }, 3000);
-        return () => clearInterval(timer);
-    }, []);
 
     useEffect(() => {
         const observerOptions = {
@@ -129,50 +110,30 @@ export default function Home() {
         <div className="home">
             <AnnouncementBar />
             {/* ── HERO ── */}
+            {/* Fondo: agregar src/assets/hero-moto.jpg para ver la foto de moto */}
             <section className="hero">
-                <div className="hero-bg">
-                    <div className="hero-glow" />
-                </div>
+                <div className="hero-overlay" />
                 <div className="container hero-inner">
-                    <div className="hero-content" style={{ paddingTop: '30px' }}>
-                        <h1>Repuestos de moto<br /><span className="text-accent">originales y alternativos</span></h1>
+                    <div className="hero-content">
+                        <span className="hero-badge-season">TEMPORADA {new Date().getFullYear()}</span>
+                        <h1 className="hero-title">
+                            EQUIPÁ TU <span className="text-accent">PASIÓN</span><br />
+                            AL MEJOR PRECIO
+                        </h1>
                         <p>
-                            Todo lo que tu moto necesita, en un solo lugar. Honda, Yamaha,
-                            Suzuki, Bajaj, Kawasaki e más marcas con garantía garantizada.
+                            Potencia tu aventura con la mejor financiación del<br />
+                            mercado y garantía oficial en todas nuestras marcas.
                         </p>
                         <div className="hero-actions">
                             <Link to="/catalogo" className="btn btn-primary btn-lg">
-                                Ver catálogo <ArrowRight size={18} aria-hidden="true" />
+                                VER CATÁLOGO <ArrowRight size={18} aria-hidden="true" />
                             </Link>
                             <Link to="/contacto" className="btn btn-secondary btn-lg">
-                                Contactar
+                                FINANCIACIÓN
                             </Link>
-                        </div>
-                    </div>
-                    <div className="hero-visual" aria-label="Accesorios de moto">
-                        <div className="hero-slideshow">
-                            {heroSlides.map((s, i) => (
-                                <img
-                                    key={i}
-                                    src={s.src}
-                                    alt={s.alt}
-                                    className={`hero-slide-img${i === slideIdx ? ' active' : ''}`}
-                                />
-                            ))}
-                            <div className="slide-dots">
-                                {heroSlides.map((_, i) => (
-                                    <button
-                                        key={i}
-                                        className={`slide-dot${i === slideIdx ? ' active' : ''}`}
-                                        onClick={() => setSlideIdx(i)}
-                                        aria-label={`Slide ${i + 1}`}
-                                    />
-                                ))}
-                            </div>
                         </div>
                     </div>
                 </div>
-
             </section>
 
             {/* ── MARCAS ── */}
@@ -180,7 +141,7 @@ export default function Home() {
                 <div className="container">
                     <div className="section-title" style={{ alignItems: 'center', textAlign: 'center' }}>
                         <div className="accent-line" style={{ margin: '0 auto' }} />
-                        <h2>Nuestras marcas de confianza</h2>
+                        <h2 style={{ textTransform: 'uppercase' }}>Nuestras marcas de confianza</h2>
                     </div>
                     <div className="brands-logo-row">
                         <div className="brand-logo-item"><img src={brandLS2} alt="LS2 Helmets" /></div>
@@ -199,27 +160,6 @@ export default function Home() {
                         <div className="brand-logo-item"><img src={brandBajaj} alt="Bajaj" /></div>
                         <div className="brand-logo-item"><img src={brandTriumph} alt="Triumph" /></div>
                         <div className="brand-logo-item"><img src={brandHarley} alt="Harley" /></div>
-                    </div>
-                </div>
-            </section>
-
-            {/* ── CATEGORÍAS ── */}
-            <section className="section reveal">
-                <div className="container">
-                    <div className="section-title">
-                        <div className="accent-line" />
-                        <h2>Categorías</h2>
-                        <p className="text-muted">Encontrá lo que buscás por tipo de repuesto</p>
-                    </div>
-                    <div className="categories-grid">
-                        {rootCats?.map(cat => (
-                            <Link key={cat.id} to={`/catalogo?categoria=${cat.slug}`} className="cat-card">
-                                <div className="cat-img-wrap">
-                                    <img src={catImages[cat.slug] || catMotor} alt={cat.nombre} className="cat-img" />
-                                </div>
-                                <span className="cat-name">{cat.nombre}</span>
-                            </Link>
-                        ))}
                     </div>
                 </div>
             </section>
@@ -248,18 +188,6 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* ── CTA ── */}
-            <section className="cta-section reveal">
-                <div className="container cta-inner">
-                    <div>
-                        <h2>¿No encontrás lo que buscás?</h2>
-                        <p className="text-muted">Contanos el modelo de tu moto y te conseguimos el repuesto.</p>
-                    </div>
-                    <Link to="/contacto" className="btn btn-primary btn-lg">
-                        Hacer una consulta <ArrowRight size={18} aria-hidden="true" />
-                    </Link>
-                </div>
-            </section>
 
             {/* ── SOCIAL ── */}
             <section className="social-section reveal">

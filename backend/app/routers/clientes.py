@@ -1,16 +1,40 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
-from ..models import Cliente, ClienteMoto
+from ..models import Cliente, ClienteMoto, Venta, Garantia
 from ..schemas.cliente import Cliente as ClienteSchema, ClienteCreate, ClienteUpdate, ClienteMoto as ClienteMotoSchema, ClienteMotoCreate, ClienteRegister
+from ..schemas.venta import VentaOut
+from ..schemas.garantia import GarantiaOut
 from ..auth_utils import get_password_hash
+from ..limiter import limiter
 from .auth import get_current_user
 
 router = APIRouter()
 
+
+def get_current_cliente(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    if not isinstance(current_user, Cliente):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo accesible para clientes")
+    return current_user
+
+
+@router.get("/me", response_model=ClienteSchema)
+def get_my_profile(current_cliente: Cliente = Depends(get_current_cliente)):
+    return current_cliente
+
+
+@router.get("/me/pedidos", response_model=List[VentaOut])
+def get_my_pedidos(current_cliente: Cliente = Depends(get_current_cliente), db: Session = Depends(get_db)):
+    return db.query(Venta).filter(Venta.cliente_id == current_cliente.id).order_by(Venta.fecha.desc()).all()
+
+
+@router.get("/me/garantias", response_model=List[GarantiaOut])
+def get_my_garantias(current_cliente: Cliente = Depends(get_current_cliente), db: Session = Depends(get_db)):
+    return db.query(Garantia).filter(Garantia.cliente_id == current_cliente.id).order_by(Garantia.fecha_apertura.desc()).all()
+
 def check_admin_role(current_user = Depends(get_current_user)):
-    if current_user.role not in ["admin", "vendedor"]:
+    if getattr(current_user, "role", None) not in ["admin", "vendedor"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tiene permisos para realizar esta acción"
@@ -27,7 +51,13 @@ def list_clientes(
 ):
     query = db.query(Cliente).filter(Cliente.activo == True)
     if search:
-        query = query.filter(Cliente.nombre.ilike(f"%{search}%") | Cliente.documento_nro.ilike(f"%{search}%"))
+        from sqlalchemy import func, or_
+        term = search.strip()
+        search_query = func.plainto_tsquery('spanish', func.unaccent(term))
+        text_match = func.to_tsvector('spanish', func.unaccent(Cliente.nombre)).op('@@')(search_query)
+        doc_match = Cliente.documento_nro.ilike(f"%{term}%")
+        query = query.filter(or_(text_match, doc_match))
+        
     return query.offset(skip).limit(limit).all()
 
 @router.get("/{id}", response_model=ClienteSchema)
@@ -38,7 +68,8 @@ def get_cliente(id: int, db: Session = Depends(get_db), _ = Depends(check_admin_
     return cliente
 
 @router.post("/register", response_model=ClienteSchema, status_code=status.HTTP_201_CREATED)
-def register_public_cliente(cliente: ClienteRegister, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register_public_cliente(request: Request, cliente: ClienteRegister, db: Session = Depends(get_db)):
     # Check if document already exists
     existing = db.query(Cliente).filter(Cliente.documento_nro == cliente.documento_nro).first()
     if existing:
@@ -102,11 +133,18 @@ def delete_cliente(id: int, db: Session = Depends(get_db), _ = Depends(check_adm
     return {"message": "Cliente desactivado exitosamente"}
 
 @router.post("/{id}/motos", response_model=ClienteMotoSchema, status_code=status.HTTP_201_CREATED)
-def add_cliente_moto(id: int, moto: ClienteMotoCreate, db: Session = Depends(get_db)):
+def add_cliente_moto(id: int, moto: ClienteMotoCreate, db: Session = Depends(get_db),
+                     current_user=Depends(get_current_user)):
+    # Admin/vendedor pueden agregar motos a cualquier cliente;
+    # un cliente solo puede agregar motos a su propia cuenta
+    if getattr(current_user, "role", None) not in ["admin", "vendedor"]:
+        if not isinstance(current_user, Cliente) or current_user.id != id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No autorizado")
+
     db_cliente = db.query(Cliente).filter(Cliente.id == id).first()
     if not db_cliente:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    
+
     db_moto = ClienteMoto(**moto.model_dump(), cliente_id=id)
     db.add(db_moto)
     db.commit()

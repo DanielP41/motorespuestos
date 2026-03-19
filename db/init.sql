@@ -1,32 +1,42 @@
 -- =============================================================
--- MOTO-REPUESTOS — Schema Inicial PostgreSQL 16
--- Versión 1.0 — Marzo 2026
+-- MOTO-REPUESTOS — Schema Completo PostgreSQL 16
+-- Versión 2.0 — Marzo 2026
+-- Fuente única de verdad: incluye todos los parches aplicados.
 -- =============================================================
 
 -- Extensiones necesarias
 CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Wrapper IMMUTABLE para unaccent (requerido por índices GIN)
+CREATE OR REPLACE FUNCTION immutable_unaccent(text)
+RETURNS text AS $$
+  SELECT unaccent($1);
+$$ LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE;
+
 -- =============================================================
 -- SECCIÓN 0: USUARIOS Y AUTENTICACIÓN
 -- =============================================================
 
 CREATE TABLE usuarios (
-    id          SERIAL PRIMARY KEY,
-    username    VARCHAR(100) NOT NULL UNIQUE,
-    email       VARCHAR(150) NOT NULL UNIQUE,
-    hashed_password VARCHAR(255) NOT NULL,
-    nombre_completo VARCHAR(255),
-    role        VARCHAR(20) NOT NULL DEFAULT 'vendedor', -- admin, vendedor
-    is_active   BOOLEAN NOT NULL DEFAULT true,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                    SERIAL PRIMARY KEY,
+    username              VARCHAR(100)  NOT NULL UNIQUE,
+    email                 VARCHAR(150)  NOT NULL UNIQUE,
+    hashed_password       VARCHAR(255)  NOT NULL,
+    nombre_completo       VARCHAR(255),
+    role                  VARCHAR(20)   NOT NULL DEFAULT 'vendedor', -- admin, vendedor
+    is_active             BOOLEAN       NOT NULL DEFAULT true,
+    token_invalidated_at  TIMESTAMPTZ,
+    password_reset_token  VARCHAR(100),
+    password_reset_expires TIMESTAMPTZ,
+    created_at            TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at            TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
--- Admin por defecto (admin / admin123)
--- Hash generado con bcrypt
-INSERT INTO usuarios (username, email, hashed_password, role, nombre_completo)
-VALUES ('admin', 'admin@motorespuestos.com', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6L6s57gzRTf9Hio6', 'admin', 'Administrador Principal');
+-- Usuario admin inicial: NO se inserta aquí para evitar credenciales en el repositorio.
+-- Crear con el script de inicialización:
+--   python -m app.scripts.create_admin
+-- o via variable de entorno ADMIN_INIT_PASSWORD al arrancar el contenedor.
 
 -- =============================================================
 -- SECCIÓN 1: ENUMs
@@ -43,7 +53,8 @@ CREATE TYPE metodo_pago AS ENUM (
     'tarjeta_debito',
     'tarjeta_credito',
     'transferencia',
-    'credito'
+    'credito',
+    'mercadopago'
 );
 
 CREATE TYPE estado_garantia AS ENUM ('abierta', 'en_proceso', 'resuelta', 'rechazada');
@@ -167,21 +178,24 @@ CREATE TABLE movimiento_inventario (
 -- =============================================================
 
 CREATE TABLE cliente (
-    id                  SERIAL PRIMARY KEY,
-    tipo                CHAR(1)        NOT NULL CHECK (tipo IN ('N', 'J')), -- Natural / Jurídico
-    documento_tipo      VARCHAR(20)    NOT NULL, -- CC, NIT, RUT, Pasaporte, etc.
-    documento_nro       VARCHAR(30)    NOT NULL UNIQUE,
-    nombre              VARCHAR(255)   NOT NULL,
-    telefono            VARCHAR(30),
-    email               VARCHAR(255),
-    hashed_password     VARCHAR(255),
-    direccion           TEXT,
-    credito_habilitado  BOOLEAN        NOT NULL DEFAULT false,
-    limite_credito      NUMERIC(14, 2) NOT NULL DEFAULT 0 CHECK (limite_credito >= 0),
-    saldo_credito       NUMERIC(14, 2) NOT NULL DEFAULT 0, -- deuda actual
-    activo              BOOLEAN        NOT NULL DEFAULT true,
-    creado_en           TIMESTAMPTZ    NOT NULL DEFAULT now(),
-    actualizado_en      TIMESTAMPTZ    NOT NULL DEFAULT now()
+    id                    SERIAL PRIMARY KEY,
+    tipo                  CHAR(1)        NOT NULL CHECK (tipo IN ('N', 'J')), -- Natural / Jurídico
+    documento_tipo        VARCHAR(20)    NOT NULL, -- CC, NIT, RUT, Pasaporte, etc.
+    documento_nro         VARCHAR(30)    NOT NULL UNIQUE,
+    nombre                VARCHAR(255)   NOT NULL,
+    telefono              VARCHAR(30),
+    email                 VARCHAR(255)   UNIQUE,
+    hashed_password       VARCHAR(255),
+    direccion             TEXT,
+    credito_habilitado    BOOLEAN        NOT NULL DEFAULT false,
+    limite_credito        NUMERIC(14, 2) NOT NULL DEFAULT 0 CHECK (limite_credito >= 0),
+    saldo_credito         NUMERIC(14, 2) NOT NULL DEFAULT 0, -- deuda actual
+    activo                BOOLEAN        NOT NULL DEFAULT true,
+    token_invalidated_at  TIMESTAMPTZ,
+    password_reset_token  VARCHAR(100),
+    password_reset_expires TIMESTAMPTZ,
+    creado_en             TIMESTAMPTZ    NOT NULL DEFAULT now(),
+    actualizado_en        TIMESTAMPTZ    NOT NULL DEFAULT now()
 );
 
 -- Motos registradas del cliente
@@ -203,21 +217,23 @@ CREATE TABLE cliente_moto (
 
 CREATE TABLE venta (
     id               BIGSERIAL PRIMARY KEY,
-    numero_factura   VARCHAR(50)   NOT NULL UNIQUE,
-    cliente_id       INTEGER       REFERENCES cliente(id),  -- NULL = venta mostrador
-    cliente_moto_id  INTEGER       REFERENCES cliente_moto(id),
-    fecha            TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    numero_factura   VARCHAR(50)    NOT NULL UNIQUE,
+    cliente_id       INTEGER        REFERENCES cliente(id),  -- NULL = venta mostrador
+    cliente_moto_id  INTEGER        REFERENCES cliente_moto(id),
+    fecha            TIMESTAMPTZ    NOT NULL DEFAULT now(),
     subtotal         NUMERIC(14, 2) NOT NULL DEFAULT 0,
     descuento_total  NUMERIC(14, 2) NOT NULL DEFAULT 0,
     impuesto_pct     NUMERIC(5, 2)  NOT NULL DEFAULT 0,  -- % configurable
     impuesto_monto   NUMERIC(14, 2) NOT NULL DEFAULT 0,
     total            NUMERIC(14, 2) NOT NULL DEFAULT 0,
-    metodo_pago      metodo_pago   NOT NULL DEFAULT 'efectivo',
-    estado           estado_venta  NOT NULL DEFAULT 'pendiente',
+    metodo_pago      metodo_pago    NOT NULL DEFAULT 'efectivo',
+    estado           estado_venta   NOT NULL DEFAULT 'pendiente',
+    mp_preference_id VARCHAR(255),
+    mp_payment_id    VARCHAR(255),
     notas            TEXT,
     usuario          VARCHAR(150),
-    creado_en        TIMESTAMPTZ   NOT NULL DEFAULT now(),
-    actualizado_en   TIMESTAMPTZ   NOT NULL DEFAULT now()
+    creado_en        TIMESTAMPTZ    NOT NULL DEFAULT now(),
+    actualizado_en   TIMESTAMPTZ    NOT NULL DEFAULT now()
 );
 
 -- Líneas de la venta
@@ -286,16 +302,24 @@ CREATE TABLE garantia_seguimiento (
 -- Búsqueda full-text de repuestos (sin tilde, insensible a mayúsculas)
 CREATE INDEX idx_repuesto_nombre_fts
     ON repuesto
-    USING GIN (to_tsvector('spanish', unaccent(nombre)));
+    USING GIN (to_tsvector('spanish', immutable_unaccent(nombre)));
 
 -- Búsqueda full-text de clientes por nombre
 CREATE INDEX idx_cliente_nombre
     ON cliente
-    USING GIN (to_tsvector('spanish', unaccent(nombre)));
+    USING GIN (to_tsvector('spanish', immutable_unaccent(nombre)));
 
 -- Lookup rápido por número de documento
 CREATE INDEX idx_cliente_documento
     ON cliente (documento_nro);
+
+-- Lookup por email de cliente (autenticación)
+CREATE INDEX idx_cliente_email
+    ON cliente (email);
+
+-- Índice para password reset tokens
+CREATE INDEX idx_usuarios_reset_token ON usuarios (password_reset_token);
+CREATE INDEX idx_cliente_reset_token  ON cliente  (password_reset_token);
 
 -- Consultas de ventas por rango de fechas
 CREATE INDEX idx_venta_fecha

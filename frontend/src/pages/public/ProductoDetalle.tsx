@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Check, ArrowLeft, Package, Shield, Star } from 'lucide-react';
-import { mockRepuestos, mockModelos, mockMarcas } from '../../data/mockData';
+import { ShoppingCart, Check, ArrowLeft, Package, Shield, Star, Loader2 } from 'lucide-react';
+import { getRepuestoById } from '../../services/api';
 import { useCart } from '../../context/CartContext';
 import './ProductoDetalle.css';
 
@@ -12,9 +12,29 @@ export default function ProductoDetalle() {
     const [qty, setQty] = useState(1);
     const [added, setAdded] = useState(false);
 
-    const rep = mockRepuestos.find(r => r.id === Number(id));
+    const [rep, setRep] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
-    if (!rep) {
+    useEffect(() => {
+        if (!id) return;
+        setLoading(true);
+        getRepuestoById(Number(id))
+            .then(setRep)
+            .catch(() => setError('Repuesto no encontrado'))
+            .finally(() => setLoading(false));
+    }, [id]);
+
+    if (loading) {
+        return (
+            <div className="container" style={{ padding: '80px 0', textAlign: 'center' }}>
+                <Loader2 className="spinner" size={48} />
+                <p className="text-muted" style={{ marginTop: 16 }}>Cargando...</p>
+            </div>
+        );
+    }
+
+    if (error || !rep) {
         return (
             <div className="container" style={{ padding: '80px 0', textAlign: 'center' }}>
                 <h2>Repuesto no encontrado</h2>
@@ -27,19 +47,15 @@ export default function ProductoDetalle() {
 
     const inCart = isInCart(rep.id);
     const cartQty = getQuantity(rep.id);
-    const imgUrl = rep.imagenes?.[0]?.url ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600';
+    const imgUrl = rep.imagen_url
+        ?? rep.imagenes?.[0]?.url
+        ?? 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600';
 
     const handleAdd = () => {
         addItem(rep, qty);
         setAdded(true);
         setTimeout(() => setAdded(false), 1600);
     };
-
-    const compatibilidades = rep.compatibilidades?.map(c => {
-        const modelo = mockModelos.find(m => m.id === c.modelo_moto_id);
-        const marca = mockMarcas.find(m => m.id === modelo?.marca_id);
-        return { modelo, marca, anio_desde: c.anio_desde, anio_hasta: c.anio_hasta };
-    }) ?? [];
 
     return (
         <div className="detalle-page">
@@ -65,7 +81,7 @@ export default function ProductoDetalle() {
                     {/* Info */}
                     <div className="detalle-info-col">
                         <div className="detalle-meta">
-                            <span className="detalle-cat">{rep.categoria?.nombre}</span>
+                            <span className="detalle-cat">{rep.categoria?.nombre ?? rep.categoria}</span>
                             <span className="detalle-sku">SKU: {rep.sku}</span>
                         </div>
 
@@ -130,14 +146,14 @@ export default function ProductoDetalle() {
                     </div>
                 </div>
 
-                {/* Compatibilidad */}
-                {compatibilidades.length > 0 && (
+                {/* Compatibilidad — si la API la retorna */}
+                {rep.compatibilidades?.length > 0 && (
                     <div className="detalle-compat">
                         <h3>Compatibilidad</h3>
                         <div className="compat-grid">
-                            {compatibilidades.map((c, i) => (
+                            {rep.compatibilidades.map((c: any, i: number) => (
                                 <div key={i} className="compat-card card">
-                                    <span className="compat-marca">{c.marca?.nombre}</span>
+                                    <span className="compat-marca">{c.modelo?.marca?.nombre}</span>
                                     <span className="compat-modelo">{c.modelo?.nombre}</span>
                                     {(c.anio_desde || c.anio_hasta) && (
                                         <span className="compat-anio">

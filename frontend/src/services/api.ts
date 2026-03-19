@@ -3,7 +3,7 @@
  * Connects the frontend to the FastAPI backend.
  */
 
-const BASE_URL = 'http://localhost:8001';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
 async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const token = localStorage.getItem('moto_token');
@@ -29,58 +29,30 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
 // ── Catálogo ──
 
 export async function getCategoriasRaiz(): Promise<any[]> {
-    // These match the slugs used in Home.tsx for images
-    return [
-        { id: 1, nombre: 'Motor', slug: 'motor' },
-        { id: 2, nombre: 'Transmisión', slug: 'transmision' },
-        { id: 3, nombre: 'Frenos', slug: 'frenos' },
-        { id: 4, nombre: 'Suspensión', slug: 'suspension' },
-        { id: 5, nombre: 'Eléctrico', slug: 'electrico' },
-        { id: 6, nombre: 'Carrocería', slug: 'carroceria' },
-        { id: 7, nombre: 'Lubricantes', slug: 'lubricantes-fluidos' },
-        { id: 8, nombre: 'Accesorios', slug: 'accesorios' },
-    ];
+    return apiFetch('/catalogo/categorias/');
 }
 
 export async function getMarcas(): Promise<any[]> {
-    return [
-        { id: 1, nombre: 'Honda' },
-        { id: 2, nombre: 'Yamaha' },
-        { id: 3, nombre: 'Suzuki' },
-        { id: 4, nombre: 'Bajaj' },
-        { id: 5, nombre: 'Kawasaki' },
-    ];
+    return apiFetch('/catalogo/marcas/');
 }
 
 // ── Repuestos ────────────────────────────────────────────────────────────────
 
 export async function getRepuestos(params: any = {}): Promise<any[]> {
     const query = new URLSearchParams();
-    if (params.categoria) query.append('categoria', params.categoria);
-    if (params.marca) query.append('marca', params.marca);
+    if (params.categoria) query.append('categoria_slug', params.categoria);
+    if (params.es_original) query.append('es_original', 'true');
+    if (params.search) query.append('search', params.search);
 
     const queryString = query.toString() ? `?${query.toString()}` : '';
     const data = await apiFetch(`/repuestos/${queryString}`);
 
-    // Map backend response to frontend expectations if needed
     if (!Array.isArray(data)) return [];
-
-    return data.map((r: any) => ({
-        ...r,
-        sku: r.codigo, // Backend calls it 'codigo', frontend expects 'sku'
-        precio_venta: r.precio,
-        stock_actual: r.stock,
-    }));
+    return data;
 }
 
 export async function getRepuestoById(id: number): Promise<any> {
-    const r = await apiFetch(`/repuestos/${id}`);
-    return {
-        ...r,
-        sku: r.codigo,
-        precio_venta: r.precio,
-        stock_actual: r.stock,
-    };
+    return apiFetch(`/repuestos/${id}`);
 }
 
 export async function crearRepuesto(data: any): Promise<any> {
@@ -122,12 +94,7 @@ export async function getRepuestosFeatured(limit = 4): Promise<any[]> {
     const data = await apiFetch(`/repuestos/?limit=${limit}`);
     if (!Array.isArray(data)) return [];
 
-    return data.map((r: any) => ({
-        ...r,
-        sku: r.codigo,
-        precio_venta: r.precio,
-        stock_actual: r.stock,
-    }));
+    return data;
 }
 
 // ── Ventas ───────────────────────────────────────────────────────────────────
@@ -139,11 +106,35 @@ export async function crearVenta(ventaData: any): Promise<any> {
     });
 }
 
-export async function getVentas(filters?: { desde?: string; hasta?: string; estado?: string }): Promise<any[]> {
+export async function logoutApi(): Promise<void> {
+    await apiFetch('/auth/logout', { method: 'POST' });
+}
+
+export async function forgotPassword(email: string): Promise<void> {
+    await apiFetch('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+}
+
+export async function resetPassword(token: string, new_password: string): Promise<void> {
+    await apiFetch('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, new_password }) });
+}
+
+export async function searchVentas(search: string): Promise<any[]> {
+    return apiFetch(`/ventas/?search=${encodeURIComponent(search)}&limit=10`);
+}
+
+export async function cambiarEstadoVenta(id: number, estado: string): Promise<any> {
+    return apiFetch(`/ventas/${id}/estado`, {
+        method: 'PATCH',
+        body: JSON.stringify({ estado }),
+    });
+}
+
+export async function getVentas(filters?: { desde?: string; hasta?: string; estado?: string; page?: number }): Promise<any[]> {
     const params = new URLSearchParams();
     if (filters?.desde) params.set('desde', filters.desde);
     if (filters?.hasta) params.set('hasta', filters.hasta);
     if (filters?.estado) params.set('estado', filters.estado);
+    if (filters?.page !== undefined) params.set('page', String(filters.page));
     const query = params.toString() ? `?${params.toString()}` : '';
     return apiFetch(`/ventas/${query}`);
 }
@@ -155,10 +146,13 @@ export async function getDashboardKPIs(): Promise<any> {
 }
 // ── Inventario ──────────────────────────────────────────────────────────────
 
-export async function getMovimientos(filters?: { tipo?: string; repuesto_id?: number }): Promise<any[]> {
+export async function getMovimientos(filters?: { tipo?: string; repuesto_id?: number; page?: number; fecha_desde?: string; fecha_hasta?: string }): Promise<any[]> {
     const params = new URLSearchParams();
     if (filters?.tipo) params.set('tipo', filters.tipo);
     if (filters?.repuesto_id) params.set('repuesto_id', String(filters.repuesto_id));
+    if (filters?.page !== undefined) params.set('page', String(filters.page));
+    if (filters?.fecha_desde) params.set('fecha_desde', filters.fecha_desde);
+    if (filters?.fecha_hasta) params.set('fecha_hasta', filters.fecha_hasta);
     const query = params.toString() ? `?${params.toString()}` : '';
     return apiFetch(`/inventario/${query}`);
 }
@@ -267,6 +261,36 @@ export async function login(username: string, password: string): Promise<any> {
 export async function actualizarCliente(id: number, data: any): Promise<any> {
     return apiFetch(`/clientes/${id}`, {
         method: 'PUT',
+        body: JSON.stringify(data),
+    });
+}
+
+// ── Mi Cuenta (cliente logueado) ─────────────────────────────────────────────
+
+export async function getMiPerfil(): Promise<any> {
+    return apiFetch('/clientes/me');
+}
+
+export async function getMisPedidos(): Promise<any[]> {
+    return apiFetch('/clientes/me/pedidos');
+}
+
+export async function getMisGarantias(): Promise<any[]> {
+    return apiFetch('/clientes/me/garantias');
+}
+
+// ── MercadoPago ───────────────────────────────────────────────────────────────
+
+export async function crearPreferenciaMp(data: {
+    items: { repuesto_id: number; cantidad: number; precio_unitario: number; descuento_pct?: number }[];
+    payer_email: string;
+    payer_name?: string;
+    notas?: string;
+    impuesto_pct?: number;
+    cliente_id?: number | null;
+}): Promise<{ init_point: string; venta_id: number; numero_factura: string }> {
+    return apiFetch('/pagos/crear-preferencia', {
+        method: 'POST',
         body: JSON.stringify(data),
     });
 }

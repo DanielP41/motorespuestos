@@ -1,0 +1,10 @@
+# Caddy obtiene y renueva los certificados SSL automáticamente via Let's Encrypt.
+# Requiere que el dominio apunte al servidor con los puertos 80 y 443 abiertos.
+
+{$DOMAIN} {
+    reverse_proxy frontend:80
+}
+
+api.{$DOMAIN} {
+    reverse_proxy backend:8000
+}

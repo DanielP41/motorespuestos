@@ -2,23 +2,53 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
-from ..models import Repuesto
+from ..models import Repuesto, RepuestoImagen
 from ..schemas.repuesto import RepuestoCreate, RepuestoUpdate, RepuestoOut
 from .auth import get_current_user
 
 router = APIRouter()
 
+
+def _require_admin(current_user=Depends(get_current_user)):
+    if getattr(current_user, "role", None) not in ["admin", "vendedor"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo admin/vendedor")
+    return current_user
+
 @router.get("/", response_model=List[RepuestoOut])
 def list_repuestos(
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 100,
     categoria_id: Optional[int] = None,
-    db: Session = Depends(get_db)
+    categoria_slug: Optional[str] = None,
+    es_original: Optional[bool] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
 ):
+    from ..models import Categoria
+    limit = min(limit, 200)
     query = db.query(Repuesto).filter(Repuesto.estado == "activo")
-    if categoria_id:
+
+    if categoria_slug:
+        cat = db.query(Categoria).filter(Categoria.slug == categoria_slug, Categoria.activa == True).first()
+        if cat:
+            # Include subcategories
+            sub_ids = [r.id for r in db.query(Categoria).filter(Categoria.padre_id == cat.id, Categoria.activa == True).all()]
+            cat_ids = [cat.id] + sub_ids
+            query = query.filter(Repuesto.categoria_id.in_(cat_ids))
+    elif categoria_id:
         query = query.filter(Repuesto.categoria_id == categoria_id)
-    
+
+    if es_original is not None:
+        query = query.filter(Repuesto.es_original == es_original)
+
+    if search:
+        from sqlalchemy import func, or_
+        term = search.strip()
+        search_query = func.plainto_tsquery('spanish', func.unaccent(term))
+        text_match = func.to_tsvector('spanish', func.unaccent(Repuesto.nombre)).op('@@')(search_query)
+        sku_match = Repuesto.sku.ilike(f"%{term}%")
+        query = query.filter(or_(text_match, sku_match))
+
     return query.offset(skip).limit(limit).all()
 
 @router.get("/{id}", response_model=RepuestoOut)
@@ -30,42 +60,60 @@ def get_repuesto(id: int, db: Session = Depends(get_db)):
 
 @router.post("/", response_model=RepuestoOut, status_code=status.HTTP_201_CREATED)
 def create_repuesto(
-    repuesto: RepuestoCreate, 
-    db: Session = Depends(get_db)
+    repuesto: RepuestoCreate,
+    db: Session = Depends(get_db),
+    _=Depends(_require_admin),
 ):
-    # Check if sku already exists
     existing = db.query(Repuesto).filter(Repuesto.sku == repuesto.sku).first()
     if existing:
         raise HTTPException(status_code=400, detail="El SKU de repuesto ya existe")
-    
-    db_repuesto = Repuesto(**repuesto.model_dump())
+
+    data = repuesto.model_dump(exclude={"imagen_url"})
+    db_repuesto = Repuesto(**data)
     db.add(db_repuesto)
+    db.flush()
+
+    if repuesto.imagen_url:
+        db.add(RepuestoImagen(repuesto_id=db_repuesto.id, url=repuesto.imagen_url, orden=0, es_principal=True))
+
     db.commit()
     db.refresh(db_repuesto)
     return db_repuesto
 
 @router.put("/{id}", response_model=RepuestoOut)
 def update_repuesto(
-    id: int, 
-    repuesto_update: RepuestoUpdate, 
-    db: Session = Depends(get_db)
+    id: int,
+    repuesto_update: RepuestoUpdate,
+    db: Session = Depends(get_db),
+    _=Depends(_require_admin),
 ):
     db_repuesto = db.query(Repuesto).filter(Repuesto.id == id).first()
     if not db_repuesto:
         raise HTTPException(status_code=404, detail="Repuesto no encontrado")
     
     update_data = repuesto_update.model_dump(exclude_unset=True)
+    imagen_url = update_data.pop("imagen_url", None)
+
     for key, value in update_data.items():
         setattr(db_repuesto, key, value)
-    
+
+    if imagen_url is not None:
+        # Replace principal image
+        principal = next((img for img in db_repuesto.imagenes if img.es_principal), None)
+        if principal:
+            principal.url = imagen_url
+        else:
+            db.add(RepuestoImagen(repuesto_id=db_repuesto.id, url=imagen_url, orden=0, es_principal=True))
+
     db.commit()
     db.refresh(db_repuesto)
     return db_repuesto
 
 @router.delete("/{id}")
 def delete_repuesto(
-    id: int, 
-    db: Session = Depends(get_db)
+    id: int,
+    db: Session = Depends(get_db),
+    _=Depends(_require_admin),
 ):
     db_repuesto = db.query(Repuesto).filter(Repuesto.id == id).first()
     if not db_repuesto:
@@ -77,7 +125,7 @@ def delete_repuesto(
     return {"message": "Repuesto desactivado exitosamente"}
 
 @router.post("/seed", status_code=status.HTTP_201_CREATED)
-def seed_repuestos(db: Session = Depends(get_db)):
+def seed_repuestos(db: Session = Depends(get_db), _=Depends(_require_admin)):
     from ..models import Categoria, UnidadMedida
 
     rep_count = db.query(Repuesto).count()

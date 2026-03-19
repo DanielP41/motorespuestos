@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import date
 from ..database import get_db
 from ..models import MovimientoInventario, Repuesto, User
 from ..schemas.inventario import MovimientoInventarioOut, MovimientoInventarioCreate
@@ -9,19 +10,36 @@ from .auth import get_current_user
 router = APIRouter()
 
 
+def _require_admin(current_user=Depends(get_current_user)):
+    if getattr(current_user, "role", None) not in ["admin", "vendedor"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo admin/vendedor")
+    return current_user
+
+
 @router.get("/", response_model=List[MovimientoInventarioOut])
 def get_inventario(
-    skip: int = 0,
-    limit: int = 200,
+    page: int = 0,
+    limit: int = 50,
     tipo: Optional[str] = None,
     repuesto_id: Optional[int] = None,
-    db: Session = Depends(get_db)
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    db: Session = Depends(get_db),
+    _=Depends(_require_admin),
 ):
+    limit = min(limit, 100)
+    skip = page * limit
     query = db.query(MovimientoInventario)
     if tipo:
         query = query.filter(MovimientoInventario.tipo == tipo)
     if repuesto_id:
         query = query.filter(MovimientoInventario.repuesto_id == repuesto_id)
+    if fecha_desde:
+        query = query.filter(MovimientoInventario.creado_en >= fecha_desde)
+    if fecha_hasta:
+        from datetime import datetime, timedelta
+        hasta_fin_dia = datetime.combine(fecha_hasta, datetime.max.time())
+        query = query.filter(MovimientoInventario.creado_en <= hasta_fin_dia)
     return query.order_by(MovimientoInventario.creado_en.desc()).offset(skip).limit(limit).all()
 
 
@@ -29,7 +47,7 @@ def get_inventario(
 def registrar_movimiento(
     mov: MovimientoInventarioCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user=Depends(_require_admin),
 ):
     """
     Registers a manual inventory movement and updates the repuesto's stock directly.
@@ -78,11 +96,11 @@ def registrar_movimiento(
         return db_mov
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al registrar movimiento: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error al registrar movimiento")
 
 
 @router.get("/stock-critico", response_model=List[dict])
-def stock_critico(db: Session = Depends(get_db)):
+def stock_critico(db: Session = Depends(get_db), _=Depends(_require_admin)):
     """Returns repuestos where stock_actual <= stock_minimo."""
     repuestos = db.query(Repuesto).filter(
         Repuesto.stock_actual <= Repuesto.stock_minimo,
@@ -93,7 +111,7 @@ def stock_critico(db: Session = Depends(get_db)):
         {
             "id": r.id,
             "nombre": r.nombre,
-            "sku": r.codigo,
+            "sku": r.sku,
             "stock_actual": r.stock_actual,
             "stock_minimo": r.stock_minimo,
             "critico": r.stock_actual == 0,

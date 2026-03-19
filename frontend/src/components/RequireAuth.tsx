@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export default function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'admin' | 'customer' }) {
+export default function RequireAuth({ children, role }: { children: React.ReactNode, role?: 'admin' | 'vendedor' | 'cliente' }) {
     const { isAuthenticated, user } = useAuth();
     const location = useLocation();
 

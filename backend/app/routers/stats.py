@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from datetime import datetime, date, timedelta
@@ -6,12 +6,21 @@ from typing import List, Dict, Any
 
 from ..database import get_db
 from ..models import Venta, ItemVenta, Repuesto, Garantia, Categoria
+from ..limiter import limiter
 from .auth import get_current_user
 
 router = APIRouter()
 
+
+def _require_admin(current_user=Depends(get_current_user)):
+    if getattr(current_user, "role", None) not in ["admin", "vendedor"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo admin/vendedor")
+    return current_user
+
+
 @router.get("/kpis")
-def get_dashboard_kpis(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+@limiter.limit("20/minute")
+def get_dashboard_kpis(request: Request, db: Session = Depends(get_db), _=Depends(_require_admin)):
     today = date.today()
     last_7_days = today - timedelta(days=6)
     
@@ -32,14 +41,15 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user = Depends(get
     productos_activos = db.query(Repuesto).filter(Repuesto.estado == "activo").count()
     
     # 4. Garantías por vencer (next 7 days)
-    garantias_por_vencer = db.query(Garantia).filter(
-        Garantia.estado.in_(["abierta", "en_proceso"]),
-        Garantia.fecha_vencimiento >= today,
-        Garantia.fecha_vencimiento <= today + timedelta(days=7)
-    ).count()
+    garantias_rows = db.execute(text(
+        "SELECT id, cliente, nombre_repuesto, sku_repuesto, descripcion_falla, estado, dias_restantes "
+        "FROM v_garantias_por_vencer"
+    )).all()
+    garantias_por_vencer = len(garantias_rows)
 
     # 5. Ventas Recientes (last 5)
-    ventas_recientes_db = db.query(Venta).order_by(Venta.fecha.desc()).limit(5).all()
+    from sqlalchemy.orm import joinedload
+    ventas_recientes_db = db.query(Venta).options(joinedload(Venta.cliente)).order_by(Venta.fecha.desc()).limit(5).all()
     ventas_recientes = []
     for v in ventas_recientes_db:
         ventas_recientes.append({
@@ -48,7 +58,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user = Depends(get
             "fecha": v.fecha,
             "total": v.total,
             "estado": v.estado,
-            "cliente": "Consumidor Final"
+            "cliente": v.cliente.nombre if v.cliente else "Consumidor Final"
         })
 
     # 6. Tendencia Semanal (Ventas por día últimos 7 días)
@@ -100,6 +110,14 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user = Depends(get
     ingresos_mensuales = float(totales_mes.ingresos or 0)
     utilidad_mensual = float(totales_mes.utilidad or 0)
 
+    # 11. Ticket Promedio (últimos 30 días)
+    last_30_days = today - timedelta(days=29)
+    ventas_30d_count = db.query(func.count(Venta.id)).filter(
+        Venta.fecha >= last_30_days,
+        Venta.estado != "anulada"
+    ).scalar() or 0
+    ticket_promedio = ingresos_mensuales / ventas_30d_count if ventas_30d_count > 0 else 0
+
     return {
         "ventasHoy": ventas_hoy_monto,
         "ventasHoyCount": ventas_hoy_count,
@@ -108,6 +126,7 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user = Depends(get
         "productosActivos": productos_activos,
         "ingresosMensuales": ingresos_mensuales,
         "utilidadMensual": utilidad_mensual,
+        "ticketPromedio": ticket_promedio,
         "ventasRecientes": ventas_recientes,
         "ventasTrend": ventas_trend,
         "topProductos": [{"nombre": r.nombre, "sku": r.sku, "vendidos": int(r.vendidos)} for r in top_items],
@@ -116,5 +135,10 @@ def get_dashboard_kpis(db: Session = Depends(get_db), current_user = Depends(get
         "repuestosStockCritico": [
             {"id": r.id, "nombre": r.nombre, "sku": r.sku, "stock_actual": r.stock_actual, "stock_minimo": r.stock_minimo}
             for r in stock_critico_items[:5]
+        ],
+        "garantiasDetalle": [
+            {"id": r.id, "cliente": r.cliente, "repuesto": r.nombre_repuesto, "sku": r.sku_repuesto,
+             "falla": r.descripcion_falla, "estado": r.estado, "dias_restantes": int(r.dias_restantes)}
+            for r in garantias_rows
         ]
     }

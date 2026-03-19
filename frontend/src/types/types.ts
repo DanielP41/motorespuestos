@@ -69,6 +69,7 @@ export interface Repuesto {
     descripcion?: string;
     categoria_id: number;
     categoria?: Categoria;
+    marca_id?: number;
     unidad_medida_id?: number;
     precio_compra: number;
     precio_venta: number;

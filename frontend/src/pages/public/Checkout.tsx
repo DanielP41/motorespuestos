@@ -2,20 +2,23 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { crearVenta } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { crearVenta, crearPreferenciaMp } from '../../services/api';
 import './Checkout.css';
 
-type MetodoPago = 'efectivo' | 'tarjeta_debito' | 'tarjeta_credito' | 'transferencia';
+type MetodoPago = 'efectivo' | 'tarjeta_debito' | 'tarjeta_credito' | 'transferencia' | 'mercadopago';
 
 const metodos: { value: MetodoPago; label: string }[] = [
     { value: 'efectivo', label: 'Efectivo' },
     { value: 'tarjeta_debito', label: 'Tarjeta débito' },
     { value: 'tarjeta_credito', label: 'Tarjeta crédito' },
     { value: 'transferencia', label: 'Transferencia bancaria' },
+    { value: 'mercadopago', label: 'MercadoPago' },
 ];
 
 export default function Checkout() {
     const { items, total, clearCart } = useCart();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [metodo, setMetodo] = useState<MetodoPago>('efectivo');
     const [form, setForm] = useState({
@@ -40,31 +43,50 @@ export default function Checkout() {
         setError('');
 
         try {
-            // Transform cart items to backend format
-            const ventaData = {
-                metodo_pago: metodo,
-                total: total,
-                cliente_id: null, // Optional for now
-                items: items.map(item => ({
-                    repuesto_id: item.repuesto.id,
-                    cantidad: item.cantidad,
-                    precio_unitario: item.repuesto.precio_venta
-                }))
-            };
-
-            const result = await crearVenta(ventaData);
-            setSubmitted(true);
-            clearCart();
-            navigate('/pedido-exitoso', {
-                state: {
-                    numeroPedido: result.numero_factura || `MRP-${result.id.toString().padStart(4, '0')}`,
+            if (metodo === 'mercadopago') {
+                // Flujo MercadoPago: crear preferencia y redirigir al checkout de MP
+                const result = await crearPreferenciaMp({
+                    items: items.map(item => ({
+                        repuesto_id: item.repuesto.id,
+                        cantidad: item.cantidad,
+                        precio_unitario: item.repuesto.precio_venta,
+                    })),
+                    payer_email: form.email,
+                    payer_name: form.nombre,
+                    notas: form.notas || undefined,
+                    cliente_id: (user as any)?.id ?? null,
+                });
+                // Limpiar carrito antes de salir — el pago se confirma vía webhook
+                clearCart();
+                // Redirección completa al checkout de MercadoPago
+                window.location.href = result.init_point;
+            } else {
+                // Flujo estándar (efectivo, transferencia, tarjeta en local)
+                const ventaData = {
+                    metodo_pago: metodo,
                     total: total,
-                    metodo: metodo,
-                }
-            });
+                    cliente_id: (user as any)?.id ?? null,
+                    items: items.map(item => ({
+                        repuesto_id: item.repuesto.id,
+                        cantidad: item.cantidad,
+                        precio_unitario: item.repuesto.precio_venta,
+                    })),
+                    notas: form.notas || undefined,
+                };
+                const result = await crearVenta(ventaData);
+                setSubmitted(true);
+                clearCart();
+                navigate('/pedido-exitoso', {
+                    state: {
+                        numeroPedido: result.numero_factura || `MRP-${result.id.toString().padStart(4, '0')}`,
+                        total: total,
+                        metodo: metodo,
+                    }
+                });
+            }
         } catch (err: any) {
             console.error('Checkout error:', err);
-            setError(err.message || 'Error al procesar el pedido. Verificá tu sesión.');
+            setError(err.message || 'Error al procesar el pedido. Intentá de nuevo.');
         } finally {
             setLoading(false);
         }
